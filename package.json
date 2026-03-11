@@ -1,0 +1,25 @@
+{
+  "name": "@bobfrankston/neoping",
+  "version": "0.1.0",
+  "description": "Cross-platform low-level ICMP ping - exposes Windows vs Linux differences",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "neoping": "index.js"
+  },
+  "exports": {
+    ".": "./neoping.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "keywords": ["ping", "icmp", "network", "diagnostics"],
+  "license": "MIT",
+  "dependencies": {
+    "koffi": "^2.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "latest"
+  }
+}

@@ -1,0 +1,173 @@
+/**
+ * neoping CLI — thin wrapper over the neoping API.
+ * Called from neoping.ts via import.meta.main.
+ */
+
+import { styleText } from "node:util";
+import { ping, pingMultiple, getDiagnostics } from "./neoping.js";
+import type { PingOptions, PingResult } from "./icmp-types.js";
+
+function usage() {
+    console.log("neoping — cross-platform low-level ICMP ping");
+    console.log("");
+    console.log("Usage: neoping <host> [host2 ...] [options]");
+    console.log("");
+    console.log("Options:");
+    console.log("  -c <n>       Pings per host (default 4)");
+    console.log("  -t <ms>      Timeout in ms (default 4000)");
+    console.log("  -i <ms>      Interval in ms (default 1000)");
+    console.log("  -ttl <n>     TTL (default 128)");
+    console.log("  -s <n>       Payload bytes (default 32)");
+    console.log("  -sudo        Escalate if unprivileged fails");
+    console.log("  -json        JSON output");
+    console.log("  -diag        Platform diagnostics");
+    console.log("  -h           This help");
+}
+
+/** Print a summary table: Host | Address | min | avg | max | loss */
+function printTable(results: PingResult[]) {
+    // Compute column widths
+    const rows = results.map(r => {
+        const host = r.host !== r.address ? r.host : "";
+        const s = r.stats;
+        return {
+            host,
+            address: r.address || "unresolved",
+            min: s.minRtt >= 0 ? s.minRtt.toFixed(1) : "-",
+            avg: s.avgRtt >= 0 ? s.avgRtt.toFixed(1) : "-",
+            max: s.maxRtt >= 0 ? s.maxRtt.toFixed(1) : "-",
+            loss: `${s.lossPercent}%`,
+        };
+    });
+
+    const headers = { host: "Host", address: "Address", min: "Min(ms)", avg: "Avg(ms)", max: "Max(ms)", loss: "Loss" };
+    const cols = ["host", "address", "min", "avg", "max", "loss"] as const;
+
+    // Measure widths
+    const widths: Record<string, number> = {};
+    for (const col of cols) {
+        widths[col] = headers[col].length;
+        for (const row of rows) {
+            widths[col] = Math.max(widths[col], row[col].length);
+        }
+    }
+
+    // Skip host column if no DNS names were used
+    const showHost = rows.some(r => r.host !== "");
+    const activeCols = showHost ? cols : cols.filter(c => c !== "host");
+
+    // RTT columns are right-aligned, others left
+    const rightAlign = new Set(["min", "avg", "max", "loss"]);
+    const pad = (val: string, col: string) =>
+        rightAlign.has(col) ? val.padStart(widths[col]) : val.padEnd(widths[col]);
+
+    // Header
+    const headerLine = activeCols.map(c => pad(headers[c], c)).join("  ");
+    console.log(styleText("bold", headerLine));
+    console.log(activeCols.map(c => "-".repeat(widths[c])).join("  "));
+
+    // Rows
+    for (const row of rows) {
+        const lossNum = parseInt(row.loss);
+        const lossColor = lossNum === 0 ? "green" : lossNum === 100 ? "red" : "yellow";
+
+        const cells = activeCols.map(c => {
+            const val = pad(row[c], c);
+            if (c === "loss") return styleText(lossColor as any, val);
+            if (rightAlign.has(c) && row[c] !== "-") return styleText("cyan", val);
+            return val;
+        });
+        console.log(cells.join("  "));
+    }
+
+}
+
+export async function main() {
+    const args = process.argv.slice(2);
+    const hosts: string[] = [];
+    const opts: PingOptions = {};
+    let jsonOutput = false;
+    let showDiag = false;
+
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        switch (arg) {
+            case "-h":
+                usage();
+                process.exit(0);
+            case "-c":
+                opts.count = parseInt(args[++i]);
+                break;
+            case "-t":
+                opts.timeout = parseInt(args[++i]);
+                break;
+            case "-i":
+                opts.interval = parseInt(args[++i]);
+                break;
+            case "-ttl":
+                opts.ttl = parseInt(args[++i]);
+                break;
+            case "-s":
+                opts.size = parseInt(args[++i]);
+                break;
+            case "-sudo":
+                opts.sudo = true;
+                break;
+            case "-json":
+                jsonOutput = true;
+                break;
+            case "-diag":
+                showDiag = true;
+                break;
+            default:
+                if (arg.startsWith("-")) {
+                    console.error(`Unknown option: ${arg}`);
+                    process.exit(1);
+                }
+                hosts.push(arg);
+        }
+    }
+
+    if (showDiag) {
+        const diag = await getDiagnostics();
+        if (jsonOutput) {
+            console.log(JSON.stringify(diag, null, 2));
+        } else {
+            console.log(styleText("bold", "Platform Diagnostics"));
+            console.log(`  Platform: ${diag.platform} (${diag.arch})`);
+            console.log(`  Node.js:  ${diag.nodeVersion}`);
+            console.log(`  Backend:  ${diag.backend}`);
+            for (const d of diag.details) {
+                console.log(`  ${d}`);
+            }
+        }
+        if (hosts.length === 0) process.exit(0);
+        console.log("");
+    }
+
+    if (hosts.length === 0) {
+        usage();
+        process.exit(1);
+    }
+
+    try {
+        const results = await pingMultiple(hosts, opts);
+
+        if (jsonOutput) {
+            console.log(JSON.stringify(results, null, 2));
+        } else {
+            printTable(results);
+        }
+
+        // Exit code: 0 if any host replied, 1 if all failed
+        const anyAlive = results.some(r => r.stats.received > 0);
+        process.exit(anyAlive ? 0 : 1);
+    } catch (e: any) {
+        console.error(styleText("red", `Error: ${e.message}`));
+        process.exit(2);
+    }
+}
+
+if (import.meta.main) {
+    await main();
+}
