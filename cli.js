@@ -3,7 +3,7 @@
  * Called from neoping.ts via import.meta.main.
  */
 import { styleText } from "node:util";
-import { pingMultiple, getDiagnostics } from "./neoping.js";
+import { ping, getDiagnostics } from "./neoping.js";
 function usage() {
     console.log("neoping — cross-platform low-level ICMP ping");
     console.log("");
@@ -137,7 +137,7 @@ export async function main() {
         process.exit(1);
     }
     try {
-        const results = await pingMultiple(hosts, opts);
+        const results = await ping(hosts, opts);
         if (jsonOutput) {
             console.log(JSON.stringify(results, null, 2));
         }

@@ -6,26 +6,20 @@
  *   Linux:   socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP) — unprivileged
  *
  * API usage:
- *   import { ping, pingMultiple } from "@bobfrankston/neoping";
+ *   import { ping } from "@bobfrankston/neoping";
  *
  *   const result = await ping("8.8.8.8");
- *   const results = await pingMultiple(["8.8.8.8", "1.1.1.1", "google.com"]);
+ *   const results = await ping(["8.8.8.8", "1.1.1.1", "google.com"]);
  */
 import type { PingOptions, PingResult, PingReply } from "./icmp-types.js";
 export type { PingOptions, PingResult, PingReply };
 /**
- * Ping a single target.
- * Sends `count` ICMP echo requests and returns aggregated results.
+ * Ping one or more targets. Array targets run in parallel.
+ * Uses allSettled so one failure doesn't block others.
+ * Failed entries have the error field populated in their result.
  */
-export declare function ping(host: string, options?: PingOptions): Promise<PingResult>;
-/**
- * Ping multiple targets in parallel.
- * Each target runs its full ping sequence concurrently.
- */
-export declare function pingMultiple(hosts: string[], options?: PingOptions): Promise<PingResult[]>;
-/**
- * Get diagnostic information about the current platform's ICMP capabilities.
- */
+export declare function ping(target: string | string[], options?: PingOptions): Promise<PingResult | PingResult[]>;
+/** Get diagnostic information about the current platform's ICMP capabilities. (internal) */
 export declare function getDiagnostics(): Promise<{
     platform: NodeJS.Platform;
     arch: NodeJS.Architecture;

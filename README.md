@@ -21,14 +21,14 @@ Windows `ping` works but raw socket ICMP implementations fail. This tool exposes
 Primary use is as a library. RTT values are in milliseconds (float, sub-ms precision).
 
 ```typescript
-import { ping, pingMultiple, getDiagnostics } from "@bobfrankston/neoping";
+import { ping, getDiagnostics } from "@bobfrankston/neoping";
 
 // Single target
 const result = await ping("8.8.8.8");
 console.log(result.stats.avgRtt); // 10.6 (ms)
 
-// Multiple targets in parallel
-const results = await pingMultiple(["8.8.8.8", "1.1.1.1", "google.com"]);
+// Multiple targets in parallel (uses allSettled — one failure won't block others)
+const results = await ping(["8.8.8.8", "1.1.1.1", "google.com"]);
 
 // All options (all optional)
 const result = await ping("8.8.8.8", {
@@ -50,7 +50,7 @@ const diag = await getDiagnostics();
 ```typescript
 {
     host: string;          // original target
-    address: string;       // resolved IP
+    address: string;       // resolved IP (empty on error)
     family: number;        // 4 or 6
     replies: PingReply[];  // individual pings
     stats: {
@@ -95,7 +95,7 @@ google.com  142.250.217.14     10.0     11.1     12.3    0%
 
 ## Caveat
 
-This is a personal project provided as-is with no official support. It works well for my needs and I find it far more useful than any other ping package on npm, but use at your own risk.
+This is a personal project provided as-is with no official support. Unlike most npm ping packages, it uses native OS ICMP APIs and does not shell out to the `ping` command. Use at your own risk.
 
 ## Requirements
 

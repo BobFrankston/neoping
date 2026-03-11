@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "neoping",
+            "program": "${workspaceFolder}/index.ts",
+            "args": ["google.com", "8.8.8.8", "1.1.1.1", "-c", "2"],
+            "sourceMaps": true,
+            "skipFiles": ["<node_internals>/**"]
+        }
+    ]
+}

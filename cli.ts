@@ -4,7 +4,7 @@
  */
 
 import { styleText } from "node:util";
-import { ping, pingMultiple, getDiagnostics } from "./neoping.js";
+import { ping, getDiagnostics } from "./neoping.js";
 import type { PingOptions, PingResult } from "./icmp-types.js";
 
 function usage() {
@@ -151,7 +151,7 @@ export async function main() {
     }
 
     try {
-        const results = await pingMultiple(hosts, opts);
+        const results = await ping(hosts, opts) as PingResult[];
 
         if (jsonOutput) {
             console.log(JSON.stringify(results, null, 2));

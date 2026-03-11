@@ -30,5 +30,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/BobFrankston/neoping.git"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

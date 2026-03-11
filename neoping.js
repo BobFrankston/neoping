@@ -6,10 +6,10 @@
  *   Linux:   socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP) — unprivileged
  *
  * API usage:
- *   import { ping, pingMultiple } from "@bobfrankston/neoping";
+ *   import { ping } from "@bobfrankston/neoping";
  *
  *   const result = await ping("8.8.8.8");
- *   const results = await pingMultiple(["8.8.8.8", "1.1.1.1", "google.com"]);
+ *   const results = await ping(["8.8.8.8", "1.1.1.1", "google.com"]);
  */
 import * as dns from "node:dns/promises";
 import * as os from "node:os";
@@ -88,12 +88,8 @@ function computeStats(replies) {
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-/**
- * Ping a single target.
- * Sends `count` ICMP echo requests and returns aggregated results.
- */
-export async function ping(host, options) {
-    const opts = { ...DEFAULT_OPTIONS, ...options };
+/** Ping a single host and return its result */
+async function pingOne(host, opts) {
     const be = await ensureBackend();
     const resolved = await resolveAddress(host, opts.family);
     if (!resolved) {
@@ -113,7 +109,6 @@ export async function ping(host, options) {
         const reply = await be.ping(resolved.address, opts, seq);
         reply.host = host;
         replies.push(reply);
-        // Interval between pings (not after last one)
         if (seq < opts.count - 1) {
             await delay(opts.interval);
         }
@@ -130,16 +125,32 @@ export async function ping(host, options) {
     };
 }
 /**
- * Ping multiple targets in parallel.
- * Each target runs its full ping sequence concurrently.
+ * Ping one or more targets. Array targets run in parallel.
+ * Uses allSettled so one failure doesn't block others.
+ * Failed entries have the error field populated in their result.
  */
-export async function pingMultiple(hosts, options) {
-    await ensureBackend(); // load once before parallel calls
-    return Promise.all(hosts.map(host => ping(host, options)));
+export async function ping(target, options) {
+    const opts = { ...DEFAULT_OPTIONS, ...options };
+    await ensureBackend();
+    if (typeof target === "string")
+        return pingOne(target, opts);
+    const settled = await Promise.allSettled(target.map(h => pingOne(h, opts)));
+    return settled.map((s, i) => {
+        if (s.status === "fulfilled")
+            return s.value;
+        return {
+            host: target[i],
+            address: "",
+            family: opts.family,
+            replies: [],
+            stats: computeStats([]),
+            platform: os.platform(),
+            method: "error",
+            diagnostics: [s.reason?.message || String(s.reason)],
+        };
+    });
 }
-/**
- * Get diagnostic information about the current platform's ICMP capabilities.
- */
+/** Get diagnostic information about the current platform's ICMP capabilities. (internal) */
 export async function getDiagnostics() {
     const be = await ensureBackend();
     return {
