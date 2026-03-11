@@ -23,11 +23,12 @@ Primary use is as a library. RTT values are in milliseconds (float, sub-ms preci
 ```typescript
 import { ping, getDiagnostics } from "@bobfrankston/neoping";
 
-// Single target
-const result = await ping("8.8.8.8");
-console.log(result.stats.avgRtt); // 10.6 (ms)
+// Always returns an array corresponding 1:1 to the input
+// Uses allSettled — one failure won't block others
+const results = await ping("8.8.8.8");
+console.log(results[0].stats.avgRtt); // 10.6 (ms)
 
-// Multiple targets in parallel (uses allSettled — one failure won't block others)
+// Multiple targets in parallel — results[i] corresponds to input[i]
 const results = await ping(["8.8.8.8", "1.1.1.1", "google.com"]);
 
 // All options (all optional)

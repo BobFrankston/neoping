@@ -151,7 +151,7 @@ export async function main() {
     }
 
     try {
-        const results = await ping(hosts, opts) as PingResult[];
+        const results = await ping(hosts, opts);
 
         if (jsonOutput) {
             console.log(JSON.stringify(results, null, 2));

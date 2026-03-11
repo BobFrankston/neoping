@@ -18,8 +18,8 @@ export type { PingOptions, PingResult, PingReply };
  * Uses allSettled so one failure doesn't block others.
  * Failed entries have the error field populated in their result.
  */
-export declare function ping(target: string | string[], options?: PingOptions): Promise<PingResult | PingResult[]>;
-/** Get diagnostic information about the current platform's ICMP capabilities. (internal) */
+export declare function ping(target: string | string[], options?: PingOptions): Promise<PingResult[]>;
+/** Get diagnostic information about the current platform's ICMP capabilities. */
 export declare function getDiagnostics(): Promise<{
     platform: NodeJS.Platform;
     arch: NodeJS.Architecture;

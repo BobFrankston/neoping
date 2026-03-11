@@ -132,14 +132,13 @@ async function pingOne(host, opts) {
 export async function ping(target, options) {
     const opts = { ...DEFAULT_OPTIONS, ...options };
     await ensureBackend();
-    if (typeof target === "string")
-        return pingOne(target, opts);
-    const settled = await Promise.allSettled(target.map(h => pingOne(h, opts)));
+    const hosts = typeof target === "string" ? [target] : target;
+    const settled = await Promise.allSettled(hosts.map(h => pingOne(h, opts)));
     return settled.map((s, i) => {
         if (s.status === "fulfilled")
             return s.value;
         return {
-            host: target[i],
+            host: hosts[i],
             address: "",
             family: opts.family,
             replies: [],
@@ -150,7 +149,7 @@ export async function ping(target, options) {
         };
     });
 }
-/** Get diagnostic information about the current platform's ICMP capabilities. (internal) */
+/** Get diagnostic information about the current platform's ICMP capabilities. */
 export async function getDiagnostics() {
     const be = await ensureBackend();
     return {

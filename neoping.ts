@@ -149,19 +149,17 @@ async function pingOne(host: string, opts: Required<PingOptions>): Promise<PingR
  * Uses allSettled so one failure doesn't block others.
  * Failed entries have the error field populated in their result.
  */
-export async function ping(target: string | string[], options?: PingOptions): Promise<PingResult | PingResult[]> {
+export async function ping(target: string | string[], options?: PingOptions): Promise<PingResult[]> {
     const opts = { ...DEFAULT_OPTIONS, ...options } as Required<PingOptions>;
     await ensureBackend();
 
-    if (typeof target === "string")
-        return pingOne(target, opts);
-
-    const settled = await Promise.allSettled(target.map(h => pingOne(h, opts)));
+    const hosts = typeof target === "string" ? [target] : target;
+    const settled = await Promise.allSettled(hosts.map(h => pingOne(h, opts)));
     return settled.map((s, i) => {
         if (s.status === "fulfilled")
             return s.value;
         return {
-            host: target[i],
+            host: hosts[i],
             address: "",
             family: opts.family,
             replies: [],
@@ -173,7 +171,7 @@ export async function ping(target: string | string[], options?: PingOptions): Pr
     });
 }
 
-/** Get diagnostic information about the current platform's ICMP capabilities. (internal) */
+/** Get diagnostic information about the current platform's ICMP capabilities. */
 export async function getDiagnostics() {
     const be = await ensureBackend();
     return {
