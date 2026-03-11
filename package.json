@@ -14,12 +14,21 @@
     "build": "tsc",
     "watch": "tsc -w"
   },
-  "keywords": ["ping", "icmp", "network", "diagnostics"],
+  "keywords": [
+    "ping",
+    "icmp",
+    "network",
+    "diagnostics"
+  ],
   "license": "MIT",
   "dependencies": {
     "koffi": "^2.15.0"
   },
   "devDependencies": {
     "@types/node": "latest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BobFrankston/neoping.git"
   }
 }
