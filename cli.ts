@@ -26,6 +26,8 @@ function usage() {
 
 /** Print a summary table: Host | Address | min | avg | max | loss */
 function printTable(results: PingResult[]) {
+    const showCount = results.some(r => r.stats.sent > 1);
+
     // Compute column widths
     const rows = results.map(r => {
         const host = r.host !== r.address ? r.host : "";
@@ -37,27 +39,29 @@ function printTable(results: PingResult[]) {
             avg: s.avgRtt >= 0 ? s.avgRtt.toFixed(1) : "-",
             max: s.maxRtt >= 0 ? s.maxRtt.toFixed(1) : "-",
             loss: `${s.lossPercent}%`,
+            sent: `${s.sent}`,
         };
     });
 
-    const headers = { host: "Host", address: "Address", min: "Min(ms)", avg: "Avg(ms)", max: "Max(ms)", loss: "Loss" };
-    const cols = ["host", "address", "min", "avg", "max", "loss"] as const;
+    const headers: Record<string, string> = { host: "Host", address: "Address", min: "Min(ms)", avg: "Avg(ms)", max: "Max(ms)", loss: "Loss", sent: "Sent" };
+    const cols = ["host", "address", "min", "avg", "max", "loss", "sent"];
 
     // Measure widths
     const widths: Record<string, number> = {};
     for (const col of cols) {
         widths[col] = headers[col].length;
         for (const row of rows) {
-            widths[col] = Math.max(widths[col], row[col].length);
+            widths[col] = Math.max(widths[col], (row as Record<string, string>)[col].length);
         }
     }
 
-    // Skip host column if no DNS names were used
+    // Skip host column if no DNS names were used; skip sent column if count == 1
     const showHost = rows.some(r => r.host !== "");
-    const activeCols = showHost ? cols : cols.filter(c => c !== "host");
+    let activeCols = showHost ? cols : cols.filter(c => c !== "host");
+    if (!showCount) activeCols = activeCols.filter(c => c !== "sent");
 
     // RTT columns are right-aligned, others left
-    const rightAlign = new Set(["min", "avg", "max", "loss"]);
+    const rightAlign = new Set(["min", "avg", "max", "loss", "sent"]);
     const pad = (val: string, col: string) =>
         rightAlign.has(col) ? val.padStart(widths[col]) : val.padEnd(widths[col]);
 
@@ -68,13 +72,14 @@ function printTable(results: PingResult[]) {
 
     // Rows
     for (const row of rows) {
+        const r = row as Record<string, string>;
         const lossNum = parseInt(row.loss);
         const lossColor = lossNum === 0 ? "green" : lossNum === 100 ? "red" : "yellow";
 
         const cells = activeCols.map(c => {
-            const val = pad(row[c], c);
+            const val = pad(r[c], c);
             if (c === "loss") return styleText(lossColor as any, val);
-            if (rightAlign.has(c) && row[c] !== "-") return styleText("cyan", val);
+            if (rightAlign.has(c) && r[c] !== "-") return styleText("cyan", val);
             return val;
         });
         console.log(cells.join("  "));

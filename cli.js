@@ -22,6 +22,7 @@ function usage() {
 }
 /** Print a summary table: Host | Address | min | avg | max | loss */
 function printTable(results) {
+    const showCount = results.some(r => r.stats.sent > 1);
     // Compute column widths
     const rows = results.map(r => {
         const host = r.host !== r.address ? r.host : "";
@@ -33,10 +34,11 @@ function printTable(results) {
             avg: s.avgRtt >= 0 ? s.avgRtt.toFixed(1) : "-",
             max: s.maxRtt >= 0 ? s.maxRtt.toFixed(1) : "-",
             loss: `${s.lossPercent}%`,
+            sent: `${s.sent}`,
         };
     });
-    const headers = { host: "Host", address: "Address", min: "Min(ms)", avg: "Avg(ms)", max: "Max(ms)", loss: "Loss" };
-    const cols = ["host", "address", "min", "avg", "max", "loss"];
+    const headers = { host: "Host", address: "Address", min: "Min(ms)", avg: "Avg(ms)", max: "Max(ms)", loss: "Loss", sent: "Sent" };
+    const cols = ["host", "address", "min", "avg", "max", "loss", "sent"];
     // Measure widths
     const widths = {};
     for (const col of cols) {
@@ -45,11 +47,13 @@ function printTable(results) {
             widths[col] = Math.max(widths[col], row[col].length);
         }
     }
-    // Skip host column if no DNS names were used
+    // Skip host column if no DNS names were used; skip sent column if count == 1
     const showHost = rows.some(r => r.host !== "");
-    const activeCols = showHost ? cols : cols.filter(c => c !== "host");
+    let activeCols = showHost ? cols : cols.filter(c => c !== "host");
+    if (!showCount)
+        activeCols = activeCols.filter(c => c !== "sent");
     // RTT columns are right-aligned, others left
-    const rightAlign = new Set(["min", "avg", "max", "loss"]);
+    const rightAlign = new Set(["min", "avg", "max", "loss", "sent"]);
     const pad = (val, col) => rightAlign.has(col) ? val.padStart(widths[col]) : val.padEnd(widths[col]);
     // Header
     const headerLine = activeCols.map(c => pad(headers[c], c)).join("  ");
@@ -57,13 +61,14 @@ function printTable(results) {
     console.log(activeCols.map(c => "-".repeat(widths[c])).join("  "));
     // Rows
     for (const row of rows) {
+        const r = row;
         const lossNum = parseInt(row.loss);
         const lossColor = lossNum === 0 ? "green" : lossNum === 100 ? "red" : "yellow";
         const cells = activeCols.map(c => {
-            const val = pad(row[c], c);
+            const val = pad(r[c], c);
             if (c === "loss")
                 return styleText(lossColor, val);
-            if (rightAlign.has(c) && row[c] !== "-")
+            if (rightAlign.has(c) && r[c] !== "-")
                 return styleText("cyan", val);
             return val;
         });
