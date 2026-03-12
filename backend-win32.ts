@@ -175,8 +175,6 @@ export class Win32IcmpBackend implements IcmpBackend {
                 const replyBufSize = 32 + options.size + 256;
                 const replyBuf = Buffer.alloc(replyBufSize);
 
-                const startTime = performance.now();
-
                 // Use .async with a callback so the blocking FFI call
                 // runs on a worker thread — enables parallel pings.
                 const numReplies: number = await new Promise<number>((resolve, reject) => {
@@ -199,8 +197,6 @@ export class Win32IcmpBackend implements IcmpBackend {
                     );
                 });
 
-                const rtt = performance.now() - startTime;
-
                 if (numReplies > 0) {
                     // Parse ICMP_ECHO_REPLY from replyBuf
                     const status = replyBuf.readUInt32LE(4);
@@ -213,7 +209,7 @@ export class Win32IcmpBackend implements IcmpBackend {
 
                     if (status === 0) {
                         reply.alive = true;
-                        reply.rtt = Math.round(rtt * 100) / 100; // sub-ms precision
+                        reply.rtt = replyBuf.readUInt32LE(8); // RoundTripTime from ICMP_ECHO_REPLY
                         reply.ttl = replyTtl;
                         reply.bytes = dataSize;
                     } else {
