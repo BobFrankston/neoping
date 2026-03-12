@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"y:/dev/utils/neoping\" && npx tsc --noEmit 2>&1)",
+      "Bash(cd \"y:/dev/utils/neoping\" && npx tsc 2>&1)",
+      "Bash(cd \"y:/dev/utils/neoping\" && node . 8.8.8.8 -c 1 -json 2>&1)",
+      "Bash(cd \"y:/dev/utils/neoping\" && node . 8.8.8.8 1.1.1.1 google.com -c 1 2>&1)",
+      "Bash(cd \"y:/dev/utils/neoping\" && node . frankston.com -c 1 -json 2>&1)",
+      "Bash(cd \"y:/dev/utils/neoping\" && node . rmf39.aaz.lt pi4c rmf69 -c 1 -json 2>&1)",
+      "Bash(cd \"y:/dev/utils/neoping\" && npx tsc 2>&1 && node . 8.8.8.8 frankston.com -c 1 2>&1)"
+    ]
+  }
+}

@@ -76,6 +76,14 @@ export async function main() {
     const opts = {};
     let jsonOutput = false;
     let showDiag = false;
+    const requireInt = (flag, val) => {
+        const n = parseInt(val ?? "");
+        if (isNaN(n)) {
+            console.error(`${flag} requires a numeric argument (got "${val ?? ""}")`);
+            process.exit(1);
+        }
+        return n;
+    };
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
         switch (arg) {
@@ -83,19 +91,19 @@ export async function main() {
                 usage();
                 process.exit(0);
             case "-c":
-                opts.count = parseInt(args[++i]);
+                opts.count = requireInt("-c", args[++i]);
                 break;
             case "-t":
-                opts.timeout = parseInt(args[++i]);
+                opts.timeout = requireInt("-t", args[++i]);
                 break;
             case "-i":
-                opts.interval = parseInt(args[++i]);
+                opts.interval = requireInt("-i", args[++i]);
                 break;
             case "-ttl":
-                opts.ttl = parseInt(args[++i]);
+                opts.ttl = requireInt("-ttl", args[++i]);
                 break;
             case "-s":
-                opts.size = parseInt(args[++i]);
+                opts.size = requireInt("-s", args[++i]);
                 break;
             case "-sudo":
                 opts.sudo = true;
@@ -139,7 +147,8 @@ export async function main() {
     try {
         const results = await ping(hosts, opts);
         if (jsonOutput) {
-            console.log(JSON.stringify(results, null, 2));
+            const output = showDiag ? results : results.map(({ diagnostics, ...rest }) => rest);
+            console.log(JSON.stringify(output, null, 2));
         }
         else {
             printTable(results);

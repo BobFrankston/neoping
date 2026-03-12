@@ -79,7 +79,6 @@ export class Win32IcmpBackend implements IcmpBackend {
     private loaded = false;
     private loadError = "";
     private ptrSize = 8; // 64-bit Windows
-
     async available() {
         if (this.loaded) return true;
         try {
@@ -101,6 +100,9 @@ export class Win32IcmpBackend implements IcmpBackend {
             //   PIP_OPTION_INFORMATION RequestOptions,
             //   LPVOID ReplyBuffer, DWORD ReplySize, DWORD Timeout
             // )
+            // Store the base function — we call .async in ping() with a
+            // callback wrapped in a promise so the FFI runs on a worker
+            // thread without blocking the Node.js event loop.
             this.IcmpSendEcho2 = this.iphlpapi.func("__stdcall", "IcmpSendEcho2", "uint32", [
                 "void *",   // IcmpHandle
                 "void *",   // Event (NULL for sync)
@@ -175,19 +177,27 @@ export class Win32IcmpBackend implements IcmpBackend {
 
                 const startTime = performance.now();
 
-                const numReplies: number = this.IcmpSendEcho2(
-                    handle,
-                    null,       // sync
-                    null,       // no APC
-                    null,       // no context
-                    destAddr,
-                    sendData,
-                    options.size,
-                    ipOptions,
-                    replyBuf,
-                    replyBufSize,
-                    options.timeout,
-                );
+                // Use .async with a callback so the blocking FFI call
+                // runs on a worker thread — enables parallel pings.
+                const numReplies: number = await new Promise<number>((resolve, reject) => {
+                    this.IcmpSendEcho2.async(
+                        handle,
+                        null,       // no Event (sync at Win32 level)
+                        null,       // no APC
+                        null,       // no context
+                        destAddr,
+                        sendData,
+                        options.size,
+                        ipOptions,
+                        replyBuf,
+                        replyBufSize,
+                        options.timeout,
+                        (err: Error | null, result: number) => {
+                            if (err) reject(err);
+                            else resolve(result);
+                        },
+                    );
+                });
 
                 const rtt = performance.now() - startTime;
 
@@ -224,7 +234,7 @@ export class Win32IcmpBackend implements IcmpBackend {
 
     diagnostics() {
         const diags: string[] = [];
-        diags.push("Backend: Win32 IcmpSendEcho2 via Koffi FFI");
+        diags.push("Backend: Win32 IcmpSendEcho2 via Koffi FFI (async)");
         diags.push("Library: Iphlpapi.dll (no admin required)");
         if (this.loadError) {
             diags.push(`Load error: ${this.loadError}`);

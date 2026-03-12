@@ -91,6 +91,9 @@ export class Win32IcmpBackend {
             //   PIP_OPTION_INFORMATION RequestOptions,
             //   LPVOID ReplyBuffer, DWORD ReplySize, DWORD Timeout
             // )
+            // Store the base function — we call .async in ping() with a
+            // callback wrapped in a promise so the FFI runs on a worker
+            // thread without blocking the Node.js event loop.
             this.IcmpSendEcho2 = this.iphlpapi.func("__stdcall", "IcmpSendEcho2", "uint32", [
                 "void *", // IcmpHandle
                 "void *", // Event (NULL for sync)
@@ -156,10 +159,19 @@ export class Win32IcmpBackend {
                 const replyBufSize = 32 + options.size + 256;
                 const replyBuf = Buffer.alloc(replyBufSize);
                 const startTime = performance.now();
-                const numReplies = this.IcmpSendEcho2(handle, null, // sync
-                null, // no APC
-                null, // no context
-                destAddr, sendData, options.size, ipOptions, replyBuf, replyBufSize, options.timeout);
+                // Use .async with a callback so the blocking FFI call
+                // runs on a worker thread — enables parallel pings.
+                const numReplies = await new Promise((resolve, reject) => {
+                    this.IcmpSendEcho2.async(handle, null, // no Event (sync at Win32 level)
+                    null, // no APC
+                    null, // no context
+                    destAddr, sendData, options.size, ipOptions, replyBuf, replyBufSize, options.timeout, (err, result) => {
+                        if (err)
+                            reject(err);
+                        else
+                            resolve(result);
+                    });
+                });
                 const rtt = performance.now() - startTime;
                 if (numReplies > 0) {
                     // Parse ICMP_ECHO_REPLY from replyBuf
@@ -194,7 +206,7 @@ export class Win32IcmpBackend {
     }
     diagnostics() {
         const diags = [];
-        diags.push("Backend: Win32 IcmpSendEcho2 via Koffi FFI");
+        diags.push("Backend: Win32 IcmpSendEcho2 via Koffi FFI (async)");
         diags.push("Library: Iphlpapi.dll (no admin required)");
         if (this.loadError) {
             diags.push(`Load error: ${this.loadError}`);

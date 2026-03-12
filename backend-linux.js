@@ -72,9 +72,10 @@ export class LinuxIcmpBackend {
             ]);
             // ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
             //                  struct sockaddr *src_addr, socklen_t *addrlen)
+            // Use koffi async so recvfrom doesn't block the event loop — enables parallel pings
             this.recvfromFn = this.libc.func("recvfrom", "int", [
                 "int", "void *", "int", "int", "void *", "void *"
-            ]);
+            ]).async;
             // int close(int fd)
             this.closeFn = this.libc.func("close", "int", ["int"]);
             // int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen)
@@ -164,7 +165,7 @@ export class LinuxIcmpBackend {
             const srcAddr = Buffer.alloc(SOCKADDR_IN_SIZE);
             const addrLen = Buffer.alloc(4);
             addrLen.writeInt32LE(SOCKADDR_IN_SIZE, 0);
-            const received = this.recvfromFn(fd, recvBuf, 1500, 0, srcAddr, addrLen);
+            const received = await this.recvfromFn(fd, recvBuf, 1500, 0, srcAddr, addrLen);
             const rtt = performance.now() - startTime;
             if (received < 0) {
                 reply.error = "Request timed out";

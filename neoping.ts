@@ -26,6 +26,7 @@ const DEFAULT_OPTIONS: Required<PingOptions> = {
     size: 32,
     sudo: false,
     family: 4,
+    diagnostics: false,
 };
 
 let backend: IcmpBackend;
@@ -116,7 +117,7 @@ async function pingOne(host: string, opts: Required<PingOptions>): Promise<PingR
             stats: computeStats([]),
             platform: os.platform(),
             method: be.name,
-            diagnostics: [`Cannot resolve hostname: ${host}`, ...be.diagnostics()],
+            diagnostics: opts.diagnostics ? [`Cannot resolve hostname: ${host}`, ...be.diagnostics()] : [`Cannot resolve hostname: ${host}`],
         };
     }
 
@@ -140,7 +141,7 @@ async function pingOne(host: string, opts: Required<PingOptions>): Promise<PingR
         stats: computeStats(replies),
         platform: os.platform(),
         method: be.name,
-        diagnostics: be.diagnostics(),
+        diagnostics: opts.diagnostics ? be.diagnostics() : [],
     };
 }
 

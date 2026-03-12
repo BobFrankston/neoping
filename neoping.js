@@ -21,6 +21,7 @@ const DEFAULT_OPTIONS = {
     size: 32,
     sudo: false,
     family: 4,
+    diagnostics: false,
 };
 let backend;
 /** Resolve hostname to IP address */
@@ -101,7 +102,7 @@ async function pingOne(host, opts) {
             stats: computeStats([]),
             platform: os.platform(),
             method: be.name,
-            diagnostics: [`Cannot resolve hostname: ${host}`, ...be.diagnostics()],
+            diagnostics: opts.diagnostics ? [`Cannot resolve hostname: ${host}`, ...be.diagnostics()] : [`Cannot resolve hostname: ${host}`],
         };
     }
     const replies = [];
@@ -121,7 +122,7 @@ async function pingOne(host, opts) {
         stats: computeStats(replies),
         platform: os.platform(),
         method: be.name,
-        diagnostics: be.diagnostics(),
+        diagnostics: opts.diagnostics ? be.diagnostics() : [],
     };
 }
 /**
