@@ -12,6 +12,7 @@
  *   const results = await ping(["8.8.8.8", "1.1.1.1", "google.com"]);
  */
 import * as dns from "node:dns/promises";
+import * as net from "node:net";
 import * as os from "node:os";
 const DEFAULT_OPTIONS = {
     count: 4,
@@ -26,10 +27,10 @@ const DEFAULT_OPTIONS = {
 let backend;
 /** Resolve hostname to IP address */
 async function resolveAddress(host, family) {
-    // Already an IP?
-    const ipv4Re = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-    if (family === 4 && ipv4Re.test(host))
-        return { address: host, family: 4 };
+    // Already an IP? net.isIP returns 4 for IPv4, 6 for IPv6, 0 for invalid
+    const ipVersion = net.isIP(host);
+    if (ipVersion > 0)
+        return { address: host, family: ipVersion };
     try {
         const result = await dns.lookup(host, { family });
         return { address: result.address, family: result.family };

@@ -3,9 +3,13 @@
  * Called from neoping.ts via import.meta.main.
  */
 
+import { createRequire } from "node:module";
 import { styleText } from "node:util";
 import { ping, getDiagnostics } from "./neoping.js";
 import type { PingOptions, PingResult } from "./icmp-types.js";
+
+const require = createRequire(import.meta.url);
+const { version } = require("./package.json");
 
 function usage() {
     console.log("neoping — cross-platform low-level ICMP ping");
@@ -21,6 +25,7 @@ function usage() {
     console.log("  -sudo        Escalate if unprivileged fails");
     console.log("  -json        JSON output");
     console.log("  -diag        Platform diagnostics");
+    console.log("  -v           Show version");
     console.log("  -h           This help");
 }
 
@@ -108,6 +113,10 @@ export async function main() {
         switch (arg) {
             case "-h":
                 usage();
+                process.exit(0);
+            case "-v":
+            case "-version":
+                console.log(`neoping v${version}`);
                 process.exit(0);
             case "-c":
                 opts.count = requireInt("-c", args[++i]);

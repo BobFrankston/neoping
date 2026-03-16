@@ -13,6 +13,7 @@
  */
 
 import * as dns from "node:dns/promises";
+import * as net from "node:net";
 import * as os from "node:os";
 import type { PingOptions, PingResult, PingReply, IcmpBackend } from "./icmp-types.js";
 
@@ -33,10 +34,10 @@ let backend: IcmpBackend;
 
 /** Resolve hostname to IP address */
 async function resolveAddress(host: string, family: 4 | 6) {
-    // Already an IP?
-    const ipv4Re = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-    if (family === 4 && ipv4Re.test(host))
-        return { address: host, family: 4 };
+    // Already an IP? net.isIP returns 4 for IPv4, 6 for IPv6, 0 for invalid
+    const ipVersion = net.isIP(host);
+    if (ipVersion > 0)
+        return { address: host, family: ipVersion };
 
     try {
         const result = await dns.lookup(host, { family });
