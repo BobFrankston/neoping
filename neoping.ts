@@ -15,6 +15,7 @@
 import * as dns from "node:dns/promises";
 import * as net from "node:net";
 import * as os from "node:os";
+import { styleText } from "node:util";
 import type { PingOptions, PingResult, PingReply, IcmpBackend } from "./icmp-types.js";
 
 export type { PingOptions, PingResult, PingReply };
@@ -34,9 +35,12 @@ const DEFAULT_OPTIONS: Required<PingOptions> = {
 
 let backend: IcmpBackend;
 
-/** Write trace message to stderr */
+/** Write trace message to stdout in dim style */
 function trace(enabled: boolean, ...args: any[]) {
-    if (enabled) process.stderr.write(`[trace] ${args.join(" ")}\n`);
+    if (enabled) {
+        const { styleText } = require("node:util");
+        console.log(styleText("dim", `[trace] ${args.join(" ")}`));
+    }
 }
 
 /** Resolve hostname to IP address */
@@ -180,7 +184,22 @@ async function pingOne(host: string, opts: Required<PingOptions>): Promise<PingR
 
     for (let seq = 0; seq < opts.count; seq++) {
         trace(t, `  → ping seq=${seq} address=${resolved.address}`);
-        const reply = await be.ping(resolved.address, opts, seq);
+        let reply: PingReply;
+        try {
+            reply = await be.ping(resolved.address, opts, seq);
+        } catch (e: any) {
+            trace(t, `  → be.ping THREW: ${e.message}\n${e.stack}`);
+            reply = {
+                host: displayHost,
+                address: resolved.address,
+                seq,
+                alive: false,
+                rtt: -1,
+                ttl: -1,
+                bytes: 0,
+                error: e.message || String(e),
+            };
+        }
         trace(t, `  → reply: alive=${reply.alive} rtt=${reply.rtt} error="${reply.error}"`);
         reply.host = displayHost;
         replies.push(reply);

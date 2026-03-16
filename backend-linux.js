@@ -104,8 +104,10 @@ export class LinuxIcmpBackend {
         return buf;
     }
     trace(options, ...args) {
-        if (options.trace)
-            process.stderr.write(`[trace:linux] ${args.join(" ")}\n`);
+        if (options.trace) {
+            const { styleText } = require("node:util");
+            console.log(styleText("dim", `[trace:linux] ${args.join(" ")}`));
+        }
     }
     async ping(address, options, seq) {
         const reply = {
