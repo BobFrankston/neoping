@@ -22,6 +22,8 @@ function usage() {
     console.log("  -i <ms>      Interval in ms (default 1000)");
     console.log("  -ttl <n>     TTL (default 128)");
     console.log("  -s <n>       Payload bytes (default 32)");
+    console.log("  -4           Force IPv4 (default)");
+    console.log("  -6           Force IPv6 (limited — backends are IPv4-only)");
     console.log("  -sudo        Escalate if unprivileged fails");
     console.log("  -rdns        Reverse-DNS lookup for IP targets");
     console.log("  -json        JSON output");
@@ -133,6 +135,12 @@ export async function main() {
                 break;
             case "-s":
                 opts.size = requireInt("-s", args[++i]);
+                break;
+            case "-4":
+                opts.family = 4;
+                break;
+            case "-6":
+                opts.family = 6;
                 break;
             case "-sudo":
                 opts.sudo = true;

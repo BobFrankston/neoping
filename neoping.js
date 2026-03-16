@@ -23,26 +23,41 @@ const DEFAULT_OPTIONS = {
     sudo: false,
     family: 4,
     rdns: false,
+    trace: false,
     diagnostics: false,
 };
 let backend;
+/** Write trace message to stderr */
+function trace(enabled, ...args) {
+    if (enabled)
+        process.stderr.write(`[trace] ${args.join(" ")}\n`);
+}
 /** Resolve hostname to IP address */
-async function resolveAddress(host, family) {
+async function resolveAddress(host, family, traceEnabled) {
     // Already an IP? net.isIP returns 4 for IPv4, 6 for IPv6, 0 for invalid
     const ipVersion = net.isIP(host);
-    if (ipVersion > 0)
+    trace(traceEnabled, `resolveAddress("${host}", family=${family}) net.isIP=${ipVersion}`);
+    if (ipVersion > 0) {
+        trace(traceEnabled, `  → already an IPv${ipVersion} address, skipping DNS`);
         return { address: host, family: ipVersion };
+    }
     try {
+        trace(traceEnabled, `  → dns.lookup("${host}", { family: ${family} })`);
         const result = await dns.lookup(host, { family });
+        trace(traceEnabled, `  → resolved to ${result.address} (family=${result.family})`);
         return { address: result.address, family: result.family };
     }
     catch (e) {
+        trace(traceEnabled, `  → dns.lookup failed: ${e.message}`);
         // Try the other family
         try {
+            trace(traceEnabled, `  → retrying dns.lookup("${host}") without family constraint`);
             const result = await dns.lookup(host);
+            trace(traceEnabled, `  → resolved to ${result.address} (family=${result.family})`);
             return { address: result.address, family: result.family };
         }
         catch (e2) {
+            trace(traceEnabled, `  → dns.lookup fallback also failed: ${e2.message}`);
             return null;
         }
     }
@@ -103,10 +118,14 @@ async function reverseAddress(address) {
 }
 /** Ping a single host and return its result */
 async function pingOne(host, opts) {
+    const t = opts.trace;
     const be = await ensureBackend();
+    trace(t, `pingOne("${host}") backend=${be.name} family=${opts.family} count=${opts.count}`);
     const hostIsIp = net.isIP(host) > 0;
-    const resolved = await resolveAddress(host, opts.family);
+    trace(t, `  hostIsIp=${hostIsIp}`);
+    const resolved = await resolveAddress(host, opts.family, t);
     if (!resolved) {
+        trace(t, `  → resolveAddress returned null, hostIsIp=${hostIsIp}`);
         return {
             host,
             address: hostIsIp ? host : "",
@@ -118,6 +137,20 @@ async function pingOne(host, opts) {
             diagnostics: opts.diagnostics ? [`Cannot resolve hostname: ${host}`, ...be.diagnostics()] : [`Cannot resolve hostname: ${host}`],
         };
     }
+    trace(t, `  → resolved: address=${resolved.address} family=${resolved.family}`);
+    // IPv6 addresses resolved but backends are IPv4-only (for now)
+    if (resolved.family === 6) {
+        return {
+            host,
+            address: resolved.address,
+            family: 6,
+            replies: [],
+            stats: computeStats([]),
+            platform: os.platform(),
+            method: be.name,
+            diagnostics: [`IPv6 not yet supported by ${be.name}`],
+        };
+    }
     // Reverse-DNS: when target is an IP, optionally look up its hostname
     let displayHost = host;
     if (opts.rdns && hostIsIp) {
@@ -127,7 +160,9 @@ async function pingOne(host, opts) {
     }
     const replies = [];
     for (let seq = 0; seq < opts.count; seq++) {
+        trace(t, `  → ping seq=${seq} address=${resolved.address}`);
         const reply = await be.ping(resolved.address, opts, seq);
+        trace(t, `  → reply: alive=${reply.alive} rtt=${reply.rtt} error="${reply.error}"`);
         reply.host = displayHost;
         replies.push(reply);
         if (seq < opts.count - 1) {

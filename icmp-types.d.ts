@@ -49,6 +49,7 @@ export interface PingOptions {
     sudo?: boolean; /** Auto-escalate privileges if needed */
     family?: 4 | 6; /** Force IPv4 or IPv6 */
     rdns?: boolean; /** Reverse-DNS lookup when target is an IP (default false) */
+    trace?: boolean; /** Emit stderr trace for debugging (default false) */
     diagnostics?: boolean; /** Include platform diagnostics in results (default false) */
 }
 /** Interface that platform-specific backends implement */
