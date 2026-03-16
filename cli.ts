@@ -24,7 +24,8 @@ function usage() {
     console.log("  -4           Force IPv4 (default)");
     console.log("  -6           Force IPv6 (limited — backends are IPv4-only)");
     console.log("  -sudo        Escalate if unprivileged fails");
-    console.log("  -rdns        Reverse-DNS lookup for IP targets");
+    console.log("  -rdns        Reverse-DNS lookup for IP targets (default: on)");
+    console.log("  -nordns      Disable reverse-DNS lookup");
     console.log("  -json        JSON output");
     console.log("  -trace       Debug trace to stderr");
     console.log("  -diag        Platform diagnostics");
@@ -147,6 +148,9 @@ export async function main() {
                 break;
             case "-rdns":
                 opts.rdns = true;
+                break;
+            case "-nordns":
+                opts.rdns = false;
                 break;
             case "-trace":
                 opts.trace = true;

@@ -28,7 +28,7 @@ const DEFAULT_OPTIONS: Required<PingOptions> = {
     size: 32,
     sudo: false,
     family: 4,
-    rdns: false,
+    rdns: true,
     trace: false,
     diagnostics: false,
 };

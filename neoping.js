@@ -23,7 +23,7 @@ const DEFAULT_OPTIONS = {
     size: 32,
     sudo: false,
     family: 4,
-    rdns: false,
+    rdns: true,
     trace: false,
     diagnostics: false,
 };

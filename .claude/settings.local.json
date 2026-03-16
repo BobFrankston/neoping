@@ -11,7 +11,21 @@
       "Bash(where dotenvx:*)",
       "Bash(ls:*)",
       "Bash(cd:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(ipconfig:*)",
+      "Bash(ssh pi4c:*)",
+      "Bash(cmd /c \"route print\")",
+      "Bash(powershell -Command \"Get-NetIPAddress -AddressFamily IPv4 | Where-Object { \\\\$_.IPAddress -like '172.*' } | Format-Table IPAddress,PrefixLength,InterfaceAlias\")",
+      "Bash(powershell -Command \"Get-NetRoute -AddressFamily IPv4 | Where-Object { \\\\$_.DestinationPrefix -like '172.*' -or \\\\$_.DestinationPrefix -eq '0.0.0.0/0' } | Format-Table DestinationPrefix,NextHop,InterfaceAlias,RouteMetric\")",
+      "Bash(powershell -Command \"Test-Connection -Count 1 -TimeoutSeconds 2 172.20.0.112,172.20.4.58,172.20.4.84,172.20.0.1 | Format-Table Address,Status,Latency\")",
+      "Bash(powershell -Command \"Test-Connection -Count 1 172.20.0.112,172.20.4.58,172.20.4.84,172.20.0.1 2>&1 | Format-Table Address,Status,Latency\")",
+      "Bash(powershell -Command \"Get-NetFirewallRule -Direction Inbound | Where-Object { \\\\$_.DisplayName -like '*ICMP*' -or \\\\$_.DisplayName -like '*ping*' } | Format-Table DisplayName,Enabled,Action,Profile\")",
+      "Bash(ping:*)",
+      "Bash(powershell -Command \"arp -a | Select-String '172.20.4'\")",
+      "Bash(powershell -Command \"arp -s 172.20.4.58 44-17-93-93-25-88 2>&1; ping -n 1 172.20.4.58\")",
+      "WebSearch",
+      "WebFetch(domain:maclookup.app)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
