@@ -10,7 +10,7 @@ wsl ping %dest% -c 1
 wsl neoping %dest% -trace -c 1
 wsl neoping -v
 
-ssh pi4c sudo npm install @bobfrankston/neoping
+ssh pi4c sudo npm install -g @bobfrankston/neoping
 ssh pi4c ping %dest% -c 1
 ssh pi4c neoping %dest% -trace -c 1
 ssh pi4c neoping -v
