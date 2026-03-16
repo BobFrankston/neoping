@@ -23,6 +23,7 @@ function usage() {
     console.log("  -sudo        Escalate if unprivileged fails");
     console.log("  -rdns        Reverse-DNS lookup for IP targets");
     console.log("  -json        JSON output");
+    console.log("  -trace       Debug trace to stderr");
     console.log("  -diag        Platform diagnostics");
     console.log("  -v           Show version");
     console.log("  -h           This help");
@@ -132,6 +133,9 @@ export async function main() {
                 break;
             case "-rdns":
                 opts.rdns = true;
+                break;
+            case "-trace":
+                opts.trace = true;
                 break;
             case "-json":
                 jsonOutput = true;
