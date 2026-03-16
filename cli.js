@@ -2,11 +2,10 @@
  * neoping CLI — thin wrapper over the neoping API.
  * Called from neoping.ts via import.meta.main.
  */
-import { createRequire } from "node:module";
 import { styleText } from "node:util";
 import { ping, getDiagnostics } from "./neoping.js";
-const require = createRequire(import.meta.url);
-const { version } = require("./package.json");
+import pkg from "./package.json" with { type: "json" };
+const { version } = pkg;
 function usage() {
     console.log("neoping — cross-platform low-level ICMP ping");
     console.log("");

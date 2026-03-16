@@ -3,13 +3,12 @@
  * Called from neoping.ts via import.meta.main.
  */
 
-import { createRequire } from "node:module";
 import { styleText } from "node:util";
 import { ping, getDiagnostics } from "./neoping.js";
 import type { PingOptions, PingResult } from "./icmp-types.js";
+import pkg from "./package.json" with { type: "json" };
 
-const require = createRequire(import.meta.url);
-const { version } = require("./package.json");
+const { version } = pkg;
 
 function usage() {
     console.log("neoping — cross-platform low-level ICMP ping");
