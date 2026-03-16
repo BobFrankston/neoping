@@ -103,6 +103,10 @@ export class LinuxIcmpBackend {
             return null;
         return buf;
     }
+    trace(options, ...args) {
+        if (options.trace)
+            process.stderr.write(`[trace:linux] ${args.join(" ")}\n`);
+    }
     async ping(address, options, seq) {
         const reply = {
             host: address,
@@ -116,19 +120,23 @@ export class LinuxIcmpBackend {
         };
         // Try DGRAM first, fall back to RAW if sudo enabled
         let sockType = this.useRaw ? SOCK_RAW : SOCK_DGRAM;
+        this.trace(options, `socket(AF_INET, ${sockType === SOCK_RAW ? "SOCK_RAW" : "SOCK_DGRAM"}, IPPROTO_ICMP)`);
         let fd = this.socketFn(AF_INET, sockType, IPPROTO_ICMP);
+        this.trace(options, `  fd=${fd}`);
         if (fd < 0 && !this.useRaw && options.sudo) {
-            // DGRAM failed, try RAW (needs root/CAP_NET_RAW)
             this.diagMessages.push("SOCK_DGRAM failed, escalating to SOCK_RAW");
+            this.trace(options, `  DGRAM failed, escalating to SOCK_RAW`);
             sockType = SOCK_RAW;
             this.useRaw = true;
             fd = this.socketFn(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+            this.trace(options, `  RAW fd=${fd}`);
         }
         if (fd < 0) {
             reply.error = `socket() failed (fd=${fd}). ` +
                 (sockType === SOCK_DGRAM
                     ? "Check sysctl net.ipv4.ping_group_range"
                     : "Need root or CAP_NET_RAW for SOCK_RAW");
+            this.trace(options, `  → ${reply.error}`);
             return reply;
         }
         try {
@@ -146,6 +154,7 @@ export class LinuxIcmpBackend {
             this.setsockoptFn(fd, 1 /* SOL_SOCKET */, 20 /* SO_RCVTIMEO */, tvBuf, 16);
             // Build destination address
             const dest = this.buildSockaddr(address);
+            this.trace(options, `  buildSockaddr("${address}") → ${dest ? "ok" : "FAILED"}`);
             if (!dest) {
                 reply.error = `Invalid address: ${address}`;
                 return reply;
@@ -153,9 +162,11 @@ export class LinuxIcmpBackend {
             // Build ICMP echo request
             const id = process.pid & 0xFFFF;
             const packet = buildEchoRequest(id, seq, options.size);
+            this.trace(options, `  sendto fd=${fd} id=${id} seq=${seq} size=${packet.length}`);
             // Send
             const startTime = performance.now();
             const sent = this.sendtoFn(fd, packet, packet.length, 0, dest, SOCKADDR_IN_SIZE);
+            this.trace(options, `  sendto → ${sent}`);
             if (sent < 0) {
                 reply.error = `sendto() failed (rc=${sent})`;
                 return reply;
@@ -165,8 +176,10 @@ export class LinuxIcmpBackend {
             const srcAddr = Buffer.alloc(SOCKADDR_IN_SIZE);
             const addrLen = Buffer.alloc(4);
             addrLen.writeInt32LE(SOCKADDR_IN_SIZE, 0);
+            this.trace(options, `  recvfrom (waiting, timeout=${options.timeout}ms)...`);
             const received = await this.recvfromFn(fd, recvBuf, 1500, 0, srcAddr, addrLen);
             const rtt = performance.now() - startTime;
+            this.trace(options, `  recvfrom → ${received} bytes, rtt=${rtt.toFixed(2)}ms`);
             if (received < 0) {
                 reply.error = "Request timed out";
                 return reply;
@@ -177,21 +190,21 @@ export class LinuxIcmpBackend {
             let icmpOffset = 0;
             let replyTtl = -1;
             if (this.useRaw) {
-                // IP header present — parse it
                 const ipHeaderLen = (recvBuf[0] & 0x0F) * 4;
-                replyTtl = recvBuf[8]; // TTL in IP header
+                replyTtl = recvBuf[8];
                 icmpOffset = ipHeaderLen;
+                this.trace(options, `  RAW: ipHeaderLen=${ipHeaderLen} ttl=${replyTtl}`);
             }
-            // For DGRAM, TTL is not directly available without ancillary data
-            // We'd need recvmsg() with IP_RECVTTL — for now, report -1
             if (received < icmpOffset + 8) {
                 reply.error = `Short ICMP reply (${received} bytes)`;
+                this.trace(options, `  → ${reply.error}`);
                 return reply;
             }
             const icmpType = recvBuf[icmpOffset];
             const icmpCode = recvBuf[icmpOffset + 1];
             const replyId = recvBuf.readUInt16BE(icmpOffset + 4);
             const replySeq = recvBuf.readUInt16BE(icmpOffset + 6);
+            this.trace(options, `  ICMP: type=${icmpType} code=${icmpCode} id=${replyId} seq=${replySeq}`);
             if (icmpType === 0) { // Echo Reply
                 reply.alive = true;
                 reply.rtt = Math.round(rtt * 100) / 100;
@@ -208,6 +221,7 @@ export class LinuxIcmpBackend {
             else {
                 reply.error = `Unexpected ICMP type ${icmpType} code ${icmpCode}`;
             }
+            this.trace(options, `  → alive=${reply.alive} error="${reply.error}"`);
         }
         finally {
             this.closeFn(fd);

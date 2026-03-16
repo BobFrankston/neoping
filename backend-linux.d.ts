@@ -38,6 +38,7 @@ export declare class LinuxIcmpBackend implements IcmpBackend {
     private diagMessages;
     available(): Promise<boolean>;
     private buildSockaddr;
+    private trace;
     ping(address: string, options: Required<PingOptions>, seq: number): Promise<PingReply>;
     diagnostics(): string[];
 }
