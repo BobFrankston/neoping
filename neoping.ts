@@ -37,10 +37,7 @@ let backend: IcmpBackend;
 
 /** Write trace message to stdout in dim style */
 function trace(enabled: boolean, ...args: any[]) {
-    if (enabled) {
-        const { styleText } = require("node:util");
-        console.log(styleText("dim", `[trace] ${args.join(" ")}`));
-    }
+    if (enabled) console.log(styleText("dim", `[trace] ${args.join(" ")}`));
 }
 
 /** Resolve hostname to IP address */

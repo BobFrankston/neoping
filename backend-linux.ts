@@ -22,6 +22,7 @@
  * - Windows kernel ICMP driver (icmp.sys) intercepts all ICMP traffic
  */
 
+import { styleText } from "node:util";
 import { buildEchoRequest } from "./icmp-checksum.js";
 import type { IcmpBackend, PingReply, PingOptions } from "./icmp-types.js";
 
@@ -116,10 +117,7 @@ export class LinuxIcmpBackend implements IcmpBackend {
     }
 
     private trace(options: Required<PingOptions>, ...args: any[]) {
-        if (options.trace) {
-            const { styleText } = require("node:util");
-            console.log(styleText("dim", `[trace:linux] ${args.join(" ")}`));
-        }
+        if (options.trace) console.log(styleText("dim", `[trace:linux] ${args.join(" ")}`));
     }
 
     async ping(address: string, options: Required<PingOptions>, seq: number): Promise<PingReply> {

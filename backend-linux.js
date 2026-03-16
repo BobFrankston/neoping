@@ -21,6 +21,7 @@
  * - Windows Winsock SOCK_RAW+IPPROTO_ICMP was neutered in XP SP2
  * - Windows kernel ICMP driver (icmp.sys) intercepts all ICMP traffic
  */
+import { styleText } from "node:util";
 import { buildEchoRequest } from "./icmp-checksum.js";
 /** POSIX constants */
 const AF_INET = 2;
@@ -104,10 +105,8 @@ export class LinuxIcmpBackend {
         return buf;
     }
     trace(options, ...args) {
-        if (options.trace) {
-            const { styleText } = require("node:util");
+        if (options.trace)
             console.log(styleText("dim", `[trace:linux] ${args.join(" ")}`));
-        }
     }
     async ping(address, options, seq) {
         const reply = {

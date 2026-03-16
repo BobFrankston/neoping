@@ -14,6 +14,7 @@
 import * as dns from "node:dns/promises";
 import * as net from "node:net";
 import * as os from "node:os";
+import { styleText } from "node:util";
 const DEFAULT_OPTIONS = {
     count: 4,
     timeout: 4000,
@@ -29,10 +30,8 @@ const DEFAULT_OPTIONS = {
 let backend;
 /** Write trace message to stdout in dim style */
 function trace(enabled, ...args) {
-    if (enabled) {
-        const { styleText } = require("node:util");
+    if (enabled)
         console.log(styleText("dim", `[trace] ${args.join(" ")}`));
-    }
 }
 /** Resolve hostname to IP address */
 async function resolveAddress(host, family, traceEnabled) {
