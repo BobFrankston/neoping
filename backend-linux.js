@@ -178,7 +178,14 @@ export class LinuxIcmpBackend {
             const addrLen = Buffer.alloc(4);
             addrLen.writeInt32LE(SOCKADDR_IN_SIZE, 0);
             this.trace(options, `  recvfrom (waiting, timeout=${options.timeout}ms)...`);
-            const received = await this.recvfromFn(fd, recvBuf, 1500, 0, srcAddr, addrLen);
+            const received = await new Promise((resolve, reject) => {
+                this.recvfromFn(fd, recvBuf, 1500, 0, srcAddr, addrLen, (err, result) => {
+                    if (err)
+                        reject(err);
+                    else
+                        resolve(result);
+                });
+            });
             const rtt = performance.now() - startTime;
             this.trace(options, `  recvfrom → ${received} bytes, rtt=${rtt.toFixed(2)}ms`);
             if (received < 0) {

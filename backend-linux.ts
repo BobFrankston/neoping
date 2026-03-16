@@ -200,7 +200,13 @@ export class LinuxIcmpBackend implements IcmpBackend {
             addrLen.writeInt32LE(SOCKADDR_IN_SIZE, 0);
 
             this.trace(options, `  recvfrom (waiting, timeout=${options.timeout}ms)...`);
-            const received: number = await this.recvfromFn(fd, recvBuf, 1500, 0, srcAddr, addrLen);
+            const received: number = await new Promise<number>((resolve, reject) => {
+                this.recvfromFn(fd, recvBuf, 1500, 0, srcAddr, addrLen,
+                    (err: Error | null, result: number) => {
+                        if (err) reject(err);
+                        else resolve(result);
+                    });
+            });
             const rtt = performance.now() - startTime;
             this.trace(options, `  recvfrom → ${received} bytes, rtt=${rtt.toFixed(2)}ms`);
 
