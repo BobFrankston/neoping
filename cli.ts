@@ -23,6 +23,7 @@ function usage() {
     console.log("  -ttl <n>     TTL (default 128)");
     console.log("  -s <n>       Payload bytes (default 32)");
     console.log("  -sudo        Escalate if unprivileged fails");
+    console.log("  -rdns        Reverse-DNS lookup for IP targets");
     console.log("  -json        JSON output");
     console.log("  -diag        Platform diagnostics");
     console.log("  -v           Show version");
@@ -135,6 +136,9 @@ export async function main() {
                 break;
             case "-sudo":
                 opts.sudo = true;
+                break;
+            case "-rdns":
+                opts.rdns = true;
                 break;
             case "-json":
                 jsonOutput = true;

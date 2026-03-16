@@ -27,6 +27,7 @@ const DEFAULT_OPTIONS: Required<PingOptions> = {
     size: 32,
     sudo: false,
     family: 4,
+    rdns: false,
     diagnostics: false,
 };
 
@@ -104,16 +105,27 @@ function delay(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/** Reverse-DNS lookup (best-effort, returns first hostname or empty string) */
+async function reverseAddress(address: string): Promise<string> {
+    try {
+        const hostnames = await dns.reverse(address);
+        return hostnames.length > 0 ? hostnames[0] : "";
+    } catch {
+        return "";
+    }
+}
+
 /** Ping a single host and return its result */
 async function pingOne(host: string, opts: Required<PingOptions>): Promise<PingResult> {
     const be = await ensureBackend();
+    const hostIsIp = net.isIP(host) > 0;
 
     const resolved = await resolveAddress(host, opts.family);
     if (!resolved) {
         return {
             host,
-            address: "",
-            family: opts.family,
+            address: hostIsIp ? host : "",
+            family: hostIsIp ? net.isIP(host) as 4 | 6 : opts.family,
             replies: [],
             stats: computeStats([]),
             platform: os.platform(),
@@ -122,11 +134,18 @@ async function pingOne(host: string, opts: Required<PingOptions>): Promise<PingR
         };
     }
 
+    // Reverse-DNS: when target is an IP, optionally look up its hostname
+    let displayHost = host;
+    if (opts.rdns && hostIsIp) {
+        const rdnsName = await reverseAddress(resolved.address);
+        if (rdnsName) displayHost = rdnsName;
+    }
+
     const replies: PingReply[] = [];
 
     for (let seq = 0; seq < opts.count; seq++) {
         const reply = await be.ping(resolved.address, opts, seq);
-        reply.host = host;
+        reply.host = displayHost;
         replies.push(reply);
 
         if (seq < opts.count - 1) {
@@ -135,7 +154,7 @@ async function pingOne(host: string, opts: Required<PingOptions>): Promise<PingR
     }
 
     return {
-        host,
+        host: displayHost,
         address: resolved.address,
         family: resolved.family,
         replies,

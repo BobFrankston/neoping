@@ -63,6 +63,7 @@ export interface PingOptions {
     size?: number;        /** Payload size in bytes (default 32) */
     sudo?: boolean;       /** Auto-escalate privileges if needed */
     family?: 4 | 6;       /** Force IPv4 or IPv6 */
+    rdns?: boolean;       /** Reverse-DNS lookup when target is an IP (default false) */
     diagnostics?: boolean; /** Include platform diagnostics in results (default false) */
 }
 
