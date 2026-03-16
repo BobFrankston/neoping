@@ -1,11 +1,13 @@
 cls
-call C:\Users\Bob\AppData\Roaming\npm\npmglobalize.cmd
-ping 172.20.4.58 -n 1
-neoping.ps1 172.20.4.58 -trace -c 1
+set dest=172.20.4.58
 
-wsl ping 172.20.4.58 -c 1
-wsl neoping 172.20.4.58 -trace -c 1
+call C:\Users\Bob\AppData\Roaming\npm\npmglobalize.cmd
+ping %dest% -n 1
+neoping.ps1 %dest% -trace -c 1
+
+wsl ping %dest% -c 1
+wsl neoping %dest% -trace -c 1
 
 ssh pi4c sudo npm install @bobfrankston/neoping
-ssh pi4c ping 172.20.4.58 -c 1
-ssh pi4c neoping 172.20.4.58 -trace -c 1
+ssh pi4c ping %dest% -c 1
+ssh pi4c neoping %dest% -trace -c 1
