@@ -8,7 +8,7 @@
     "neoping": "index.js"
   },
   "exports": {
-    ".": "./neoping.js"
+    ".": "./pingapi.js"
   },
   "scripts": {
     "build": "tsc",

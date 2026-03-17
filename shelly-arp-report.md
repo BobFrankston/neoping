@@ -1,8 +1,10 @@
-# Shelly ESP32 Devices Become Unreachable from Windows Due to WiFi Modem Sleep + Gratuitous ARP Interaction
+# ESP32 IoT Devices Become Unreachable from Windows Due to WiFi Modem Sleep + Gratuitous ARP Interaction
 
 ## Summary
 
-Shelly Plus devices (ESP32-based) become unreachable from Windows machines over time, while remaining reachable from Linux hosts on the same subnet. The root cause is an interaction between two behaviors: (1) the ESP32's WiFi modem sleep mode, which causes it to miss incoming ARP requests, and (2) Windows Vista+ deliberately ignoring gratuitous ARP from unknown hosts. Together, these create a situation where Windows can never learn the device's MAC address and therefore cannot communicate with it.
+ESP32-based IoT devices — including Shelly, Wiz, LIFX, Tuya, and others built on the Espressif platform — become unreachable from Windows machines over time, while remaining reachable from Linux hosts on the same subnet. The root cause is an interaction between two behaviors: (1) the ESP32's WiFi modem sleep mode (an ESP-IDF default), which causes it to miss incoming ARP requests, and (2) Windows Vista+ deliberately ignoring gratuitous ARP from unknown hosts. Together, these create a situation where Windows can never learn the device's MAC address and therefore cannot communicate with it.
+
+This is not vendor-specific — it affects any device built on ESP-IDF that uses the default WiFi power management settings.
 
 ## Environment
 
@@ -71,15 +73,43 @@ Over time, the Linux host maintains its ARP entry through the Shelly's periodic 
 
 3. **Expose a "WiFi Power Save" toggle** in the Shelly device settings UI so users can disable it for wired-power devices where battery life is irrelevant (like the Plus 1PM, which is mains-powered).
 
-### On the Network/Windows Side (workarounds)
+### On the Network Side — ARP Proxy Solutions
 
-- Add a static ARP entry on Windows (requires admin): `arp -s 172.20.4.58 44-17-93-93-25-88`
-- Enable the Windows registry setting to accept gratuitous ARP (security trade-off): `HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\ArpRetryCount`
-- Power-cycle the Shelly to temporarily restore connectivity
+The most architecturally clean network-side fix is **ARP proxying**: an always-on device answers ARP requests on behalf of sleeping ESP32 devices, so Windows gets the MAC it needs.
+
+#### Router-Level ARP Proxy
+
+| Option | Cost | Notes |
+|--------|------|-------|
+| **MikroTik router** | ~$50–200+ (RouterBOARD, hEX, etc.) | RouterOS has native `arp=proxy-arp` per interface. Set-and-forget. The gold standard for this. |
+| **Ubiquiti UDM / UniFi** | Already deployed in many networks | Does **not** currently support ARP proxying. Ubiquiti should add this — it's a natural fit for UniFi's "manage your IoT fleet" positioning. Feature request worthy. |
+| **OpenWrt-based router** | $0 (reflash existing) – $30+ | Supports proxy ARP via `parprouted` or kernel `proxy_arp` sysctl. Requires comfort with Linux networking. |
+
+#### Dedicated ARP Proxy Device
+
+| Option | Cost | Notes |
+|--------|------|-------|
+| **Raspberry Pi running ARP proxy** | ~$35–75 (Pi + power + SD) | Already on the network in many setups. Run `parprouted` or a targeted script using raw sockets. Can proxy for a specific IP list. |
+| **Any always-on Linux box** | $0 (if already present) | `echo 1 > /proc/sys/net/ipv4/conf/<iface>/proxy_arp` enables kernel-level proxy for all hosts it has routes to. More surgical: a small script that only answers for known ESP32 IPs. |
+
+#### Windows-Side Workarounds (per-host, no extra hardware)
+
+| Option | Cost | Notes |
+|--------|------|-------|
+| **Static ARP entries** | $0 | `arp -s 172.20.4.58 44-17-93-93-25-88` — must be redone per device, fragile if MACs change (DHCP). |
+| **Registry: accept gratuitous ARP** | $0 | `ArpRetryCount` and related keys — security trade-off, opens cache poisoning surface. |
+| **Windows ARP listener app** | $0 | A lightweight user-space app using raw sockets (Npcap/WinPcap) can sniff gratuitous ARP broadcasts and inject the entries into the Windows ARP cache via `CreateIpNetEntry2`. The OS ignores gratuitous ARP, but an app listening on the same NIC can see them and act. This sidesteps the OS policy without modifying it. |
+| **Power-cycle the device** | $0 | Temporary — device re-enters modem sleep within minutes. |
+
+#### Recommendation
+
+The best long-term fix is on the ESP-IDF / device firmware side. For network-level mitigation, MikroTik already solves this. For UniFi users, lobbying Ubiquiti to add per-interface ARP proxy support is worthwhile — it's a one-line kernel feature that would fix an entire class of IoT reachability bugs. A Windows ARP listener app is the cheapest option for users who can't change their router or firmware.
 
 ## Broader Impact
 
-This affects any ESP32-based IoT device using default WiFi power management settings when communicating with Windows hosts. The issue is particularly insidious because:
+This affects **all** ESP32-based IoT devices using default WiFi power management settings when communicating with Windows hosts — not just Shelly. Any device built on ESP-IDF with `WIFI_PS_MIN_MODEM` or `WIFI_PS_MAX_MODEM` (the defaults) is vulnerable. Known affected product families include Shelly, Wiz, LIFX, and Tuya, plus countless other ESP32-based smart home devices.
+
+The issue is particularly insidious because:
 
 - It works initially (after boot/power-cycle) and fails silently over time
 - It works from Linux/macOS, making it appear to be a Windows-specific bug

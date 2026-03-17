@@ -27,4 +27,4 @@ export declare function getDiagnostics(): Promise<{
     backend: string;
     details: string[];
 }>;
-//# sourceMappingURL=neoping.d.ts.map
+//# sourceMappingURL=pingapi.d.ts.map

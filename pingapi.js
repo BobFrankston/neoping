@@ -233,4 +233,4 @@ export async function getDiagnostics() {
         details: be.diagnostics(),
     };
 }
-//# sourceMappingURL=neoping.js.map
+//# sourceMappingURL=pingapi.js.map

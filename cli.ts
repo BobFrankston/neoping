@@ -1,10 +1,10 @@
 /**
  * neoping CLI — thin wrapper over the neoping API.
- * Called from neoping.ts via import.meta.main.
+ * Called from index.ts via import.meta.main.
  */
 
 import { styleText } from "node:util";
-import { ping, getDiagnostics } from "./neoping.js";
+import { ping, getDiagnostics } from "./pingapi.js";
 import type { PingOptions, PingResult } from "./icmp-types.js";
 import pkg from "./package.json" with { type: "json" };
 
