@@ -25,7 +25,10 @@
       "Bash(powershell -Command \"arp -s 172.20.4.58 44-17-93-93-25-88 2>&1; ping -n 1 172.20.4.58\")",
       "WebSearch",
       "WebFetch(domain:maclookup.app)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(wsl cat:*)",
+      "Bash(wsl ping:*)",
+      "Bash(wsl sudo:*)"
     ]
   }
 }

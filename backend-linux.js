@@ -65,10 +65,25 @@ export class LinuxIcmpBackend {
             catch {
                 // Not fatal — just can't detect WSL
             }
-            // Read ping_group_range for diagnostics
+            // Read ping_group_range — on WSL it defaults to "1 0" (disabled).
+            // If we have write access (root/sudo), fix it so SOCK_DGRAM works
+            // for this session and future non-sudo runs (until WSL restarts).
+            const pingGroupPath = "/proc/sys/net/ipv4/ping_group_range";
             try {
-                const range = await fs.readFile("/proc/sys/net/ipv4/ping_group_range", "utf-8");
+                const range = await fs.readFile(pingGroupPath, "utf-8");
+                const parts = range.trim().split(/\s+/);
+                const lo = parseInt(parts[0]);
+                const hi = parseInt(parts[1]);
                 this.diagMessages.push(`ping_group_range: ${range.trim()}`);
+                if (this.isWSL && lo > hi) {
+                    try {
+                        await fs.writeFile(pingGroupPath, "0 2147483647\n");
+                        this.diagMessages.push("Fixed ping_group_range for WSL");
+                    }
+                    catch {
+                        // EPERM — not root, will escalate to SOCK_RAW later
+                    }
+                }
             }
             catch (e) {
                 this.diagMessages.push("Could not read ping_group_range");
@@ -194,42 +209,56 @@ export class LinuxIcmpBackend {
             const srcAddr = Buffer.alloc(SOCKADDR_IN_SIZE);
             const addrLen = Buffer.alloc(4);
             addrLen.writeInt32LE(SOCKADDR_IN_SIZE, 0);
-            this.trace(options, `  recvfrom (waiting, timeout=${options.timeout}ms)...`);
-            const received = await new Promise((resolve, reject) => {
-                this.recvfromFn(fd, recvBuf, 1500, 0, srcAddr, addrLen, (err, result) => {
-                    if (err)
-                        reject(err);
-                    else
-                        resolve(result);
-                });
-            });
-            const rtt = performance.now() - startTime;
-            this.trace(options, `  recvfrom → ${received} bytes, rtt=${rtt.toFixed(2)}ms`);
-            if (received < 0) {
-                reply.error = "Request timed out";
-                return reply;
-            }
-            // Parse reply
-            // SOCK_DGRAM: no IP header, starts with ICMP header
-            // SOCK_RAW: starts with IP header
+            // With SOCK_RAW on loopback, the socket sees our own outgoing echo
+            // request (type 8) before the reply (type 0). Loop to skip them.
+            let received;
             let icmpOffset = 0;
             let replyTtl = -1;
-            if (this.useRaw) {
-                const ipHeaderLen = (recvBuf[0] & 0x0F) * 4;
-                replyTtl = recvBuf[8];
-                icmpOffset = ipHeaderLen;
-                this.trace(options, `  RAW: ipHeaderLen=${ipHeaderLen} ttl=${replyTtl}`);
-            }
-            if (received < icmpOffset + 8) {
-                reply.error = `Short ICMP reply (${received} bytes)`;
-                this.trace(options, `  → ${reply.error}`);
-                return reply;
-            }
-            const icmpType = recvBuf[icmpOffset];
-            const icmpCode = recvBuf[icmpOffset + 1];
-            const replyId = recvBuf.readUInt16BE(icmpOffset + 4);
-            const replySeq = recvBuf.readUInt16BE(icmpOffset + 6);
-            this.trace(options, `  ICMP: type=${icmpType} code=${icmpCode} id=${replyId} seq=${replySeq}`);
+            let icmpType;
+            let icmpCode;
+            let replyId;
+            let replySeq;
+            do {
+                this.trace(options, `  recvfrom (waiting, timeout=${options.timeout}ms)...`);
+                received = await new Promise((resolve, reject) => {
+                    this.recvfromFn(fd, recvBuf, 1500, 0, srcAddr, addrLen, (err, result) => {
+                        if (err)
+                            reject(err);
+                        else
+                            resolve(result);
+                    });
+                });
+                this.trace(options, `  recvfrom → ${received} bytes`);
+                if (received < 0) {
+                    reply.error = "Request timed out";
+                    return reply;
+                }
+                // Parse headers
+                // SOCK_DGRAM: no IP header, starts with ICMP header
+                // SOCK_RAW: starts with IP header
+                icmpOffset = 0;
+                replyTtl = -1;
+                if (this.useRaw) {
+                    const ipHeaderLen = (recvBuf[0] & 0x0F) * 4;
+                    replyTtl = recvBuf[8];
+                    icmpOffset = ipHeaderLen;
+                    this.trace(options, `  RAW: ipHeaderLen=${ipHeaderLen} ttl=${replyTtl}`);
+                }
+                if (received < icmpOffset + 8) {
+                    reply.error = `Short ICMP reply (${received} bytes)`;
+                    this.trace(options, `  → ${reply.error}`);
+                    return reply;
+                }
+                icmpType = recvBuf[icmpOffset];
+                icmpCode = recvBuf[icmpOffset + 1];
+                replyId = recvBuf.readUInt16BE(icmpOffset + 4);
+                replySeq = recvBuf.readUInt16BE(icmpOffset + 6);
+                this.trace(options, `  ICMP: type=${icmpType} code=${icmpCode} id=${replyId} seq=${replySeq}`);
+                if (icmpType === 8) {
+                    this.trace(options, `  skipping echo request (loopback reflection)`);
+                }
+            } while (icmpType === 8);
+            const rtt = performance.now() - startTime;
             if (icmpType === 0) { // Echo Reply
                 reply.alive = true;
                 reply.rtt = Math.round(rtt * 100) / 100;
