@@ -35,6 +35,7 @@ export declare class LinuxIcmpBackend implements IcmpBackend {
     private loaded;
     private loadError;
     private useRaw;
+    private isWSL;
     private diagMessages;
     available(): Promise<boolean>;
     private buildSockaddr;

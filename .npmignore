@@ -20,3 +20,4 @@ package-lock.json
 tsconfig.json
 .vscode/
 .globalize.json5
+.claude/

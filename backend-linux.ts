@@ -50,6 +50,7 @@ export class LinuxIcmpBackend implements IcmpBackend {
     private loaded = false;
     private loadError = "";
     private useRaw = false; // true if DGRAM failed and we escalated to RAW
+    private isWSL = false;
     private diagMessages: string[] = [];
 
     async available() {
@@ -58,8 +59,18 @@ export class LinuxIcmpBackend implements IcmpBackend {
         if (os.platform() !== "linux") return false;
 
         try {
-            // Read ping_group_range for diagnostics
             const fs = await import("node:fs/promises");
+
+            // Detect WSL via /proc/version
+            try {
+                const procVersion = await fs.readFile("/proc/version", "utf-8");
+                this.isWSL = /microsoft|wsl/i.test(procVersion);
+                if (this.isWSL) this.diagMessages.push("WSL detected");
+            } catch {
+                // Not fatal — just can't detect WSL
+            }
+
+            // Read ping_group_range for diagnostics
             try {
                 const range = await fs.readFile("/proc/sys/net/ipv4/ping_group_range", "utf-8");
                 this.diagMessages.push(`ping_group_range: ${range.trim()}`);
@@ -138,9 +149,9 @@ export class LinuxIcmpBackend implements IcmpBackend {
         let fd: number = this.socketFn(AF_INET, sockType, IPPROTO_ICMP);
         this.trace(options, `  fd=${fd}`);
 
-        if (fd < 0 && !this.useRaw && options.sudo) {
-            this.diagMessages.push("SOCK_DGRAM failed, escalating to SOCK_RAW");
-            this.trace(options, `  DGRAM failed, escalating to SOCK_RAW`);
+        if (fd < 0 && !this.useRaw && (options.sudo || this.isWSL)) {
+            this.diagMessages.push(`SOCK_DGRAM failed${this.isWSL ? " (WSL)" : ""}, escalating to SOCK_RAW`);
+            this.trace(options, `  DGRAM failed, escalating to SOCK_RAW${this.isWSL ? " (WSL auto-escalate)" : ""}`);
             sockType = SOCK_RAW;
             this.useRaw = true;
             fd = this.socketFn(AF_INET, SOCK_RAW, IPPROTO_ICMP);
@@ -148,10 +159,15 @@ export class LinuxIcmpBackend implements IcmpBackend {
         }
 
         if (fd < 0) {
-            reply.error = `socket() failed (fd=${fd}). ` +
-                (sockType === SOCK_DGRAM
-                    ? "Check sysctl net.ipv4.ping_group_range"
-                    : "Need root or CAP_NET_RAW for SOCK_RAW");
+            if (this.isWSL) {
+                reply.error = `socket() failed (fd=${fd}). WSL blocks unprivileged ICMP. ` +
+                    `Run with sudo, or: sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"`;
+            } else {
+                reply.error = `socket() failed (fd=${fd}). ` +
+                    (sockType === SOCK_DGRAM
+                        ? "Check sysctl net.ipv4.ping_group_range"
+                        : "Need root or CAP_NET_RAW for SOCK_RAW");
+            }
             this.trace(options, `  → ${reply.error}`);
             return reply;
         }
@@ -264,6 +280,7 @@ export class LinuxIcmpBackend implements IcmpBackend {
     diagnostics() {
         return [
             `Backend: POSIX socket API via Koffi FFI`,
+            ...(this.isWSL ? ["Environment: WSL (Windows Subsystem for Linux)"] : []),
             `Socket type: ${this.useRaw ? "SOCK_RAW (privileged)" : "SOCK_DGRAM (unprivileged)"}`,
             "Linux kernel 3.0+ supports SOCK_DGRAM+IPPROTO_ICMP without root",
             "Kernel manages ICMP id→socket mapping, strips IP header for DGRAM",
