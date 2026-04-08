@@ -2,6 +2,7 @@
  * neoping CLI — thin wrapper over the neoping API.
  * Called from index.ts via import.meta.main.
  */
+import * as dns from "node:dns";
 import { styleText } from "node:util";
 import { ping, getDiagnostics } from "./pingapi.js";
 import pkg from "./package.json" with { type: "json" };
@@ -164,6 +165,7 @@ export async function main() {
             console.log(`  Platform: ${diag.platform} (${diag.arch})`);
             console.log(`  Node.js:  ${diag.nodeVersion}`);
             console.log(`  Backend:  ${diag.backend}`);
+            console.log(`  DNS:      ${diag.dnsServers.join(", ")}`);
             for (const d of diag.details) {
                 console.log(`  ${d}`);
             }
@@ -183,6 +185,7 @@ export async function main() {
             console.log(JSON.stringify(output, null, 2));
         }
         else {
+            console.log(styleText("dim", `DNS: ${dns.getServers().join(", ")}`));
             printTable(results);
         }
         // Exit code: 0 if any host replied, 1 if all failed

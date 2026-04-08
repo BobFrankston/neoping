@@ -230,6 +230,7 @@ export async function getDiagnostics() {
         arch: os.arch(),
         nodeVersion: process.version,
         backend: be.name,
+        dnsServers: dns.getServers(),
         details: be.diagnostics(),
     };
 }

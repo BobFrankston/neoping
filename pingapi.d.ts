@@ -25,6 +25,7 @@ export declare function getDiagnostics(): Promise<{
     arch: NodeJS.Architecture;
     nodeVersion: string;
     backend: string;
+    dnsServers: string[];
     details: string[];
 }>;
 //# sourceMappingURL=pingapi.d.ts.map

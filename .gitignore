@@ -3,6 +3,7 @@
 *.p12
 *.pem
 *.pfx
+*.tgz
 *.token
 *cert*/
 *certs*/

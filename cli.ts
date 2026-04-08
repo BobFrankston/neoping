@@ -3,6 +3,7 @@
  * Called from index.ts via import.meta.main.
  */
 
+import * as dns from "node:dns";
 import { styleText } from "node:util";
 import { ping, getDiagnostics } from "./pingapi.js";
 import type { PingOptions, PingResult } from "./icmp-types.js";
@@ -179,6 +180,7 @@ export async function main() {
             console.log(`  Platform: ${diag.platform} (${diag.arch})`);
             console.log(`  Node.js:  ${diag.nodeVersion}`);
             console.log(`  Backend:  ${diag.backend}`);
+            console.log(`  DNS:      ${diag.dnsServers.join(", ")}`);
             for (const d of diag.details) {
                 console.log(`  ${d}`);
             }
@@ -199,6 +201,7 @@ export async function main() {
             const output = showDiag ? results : results.map(({ diagnostics, ...rest }) => rest);
             console.log(JSON.stringify(output, null, 2));
         } else {
+            console.log(styleText("dim", `DNS: ${dns.getServers().join(", ")}`));
             printTable(results);
         }
 
