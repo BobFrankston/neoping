@@ -1,6 +1,6 @@
 {
   "name": "@bobfrankston/neoping",
-  "version": "0.1.24",
+  "version": "0.1.25",
   "description": "Cross-platform low-level ICMP ping - exposes Windows vs Linux differences",
   "type": "module",
   "main": "index.js",
