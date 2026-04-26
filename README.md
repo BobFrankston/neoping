@@ -4,6 +4,7 @@ Cross-platform low-level ICMP ping using native OS APIs via [Koffi](https://koff
 
 - **Windows**: `IcmpSendEcho2` (Iphlpapi.dll) — no admin required
 - **Linux**: `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)` via libc — unprivileged (kernel 3.0+)
+- **macOS**: `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)` via libc.dylib — unprivileged
 
 No child_process, no shelling out to `ping` — pure FFI to the kernel ICMP stack.
 

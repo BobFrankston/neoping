@@ -96,6 +96,16 @@ async function ensureBackend() {
         throw new Error(`Linux ICMP backend failed to load: ${linux.diagnostics().join("; ")}`);
     }
 
+    if (platform === "darwin") {
+        const { DarwinIcmpBackend } = await import("./backend-darwin.js");
+        const darwin = new DarwinIcmpBackend();
+        if (await darwin.available()) {
+            backend = darwin;
+            return backend;
+        }
+        throw new Error(`Darwin ICMP backend failed to load: ${darwin.diagnostics().join("; ")}`);
+    }
+
     throw new Error(`Unsupported platform: ${platform}`);
 }
 
