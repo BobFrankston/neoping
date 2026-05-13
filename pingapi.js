@@ -18,7 +18,7 @@ import { styleText } from "node:util";
 import { lookupMac } from "./arpapi.js";
 export { lookupMac };
 const DEFAULT_OPTIONS = {
-    count: 4,
+    count: 1,
     timeout: 4000,
     interval: 1000,
     ttl: 128,
@@ -26,7 +26,7 @@ const DEFAULT_OPTIONS = {
     sudo: false,
     family: 4,
     rdns: true,
-    arp: false,
+    arp: true,
     trace: false,
     diagnostics: false,
 };

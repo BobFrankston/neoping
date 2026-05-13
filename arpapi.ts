@@ -18,13 +18,40 @@ import * as fs from "node:fs/promises";
 import { spawn } from "node:child_process";
 
 /** Look up the MAC for an IPv4 address. Returns lowercase colon form
- *  ("aa:bb:cc:dd:ee:ff") or "" if no entry is available. */
+ *  ("aa:bb:cc:dd:ee:ff") or "" if no entry is available.
+ *
+ *  Only resolves addresses on a directly-connected subnet — for any other
+ *  IP this returns "" without doing a lookup. This prevents the misleading
+ *  case on Linux/macOS where ARP returns the default gateway's MAC for
+ *  remote IPs (Windows SendARP already enforces this server-side). */
 export async function lookupMac(ipv4: string): Promise<string> {
+    if (!isLocalSubnet(ipv4)) return "";
     const platform = os.platform();
     if (platform === "win32") return lookupMacWin32(ipv4);
     if (platform === "linux") return lookupMacLinux(ipv4);
     if (platform === "darwin") return lookupMacDarwin(ipv4);
     return "";
+}
+
+/** True iff the IP falls inside any non-loopback IPv4 subnet on this host. */
+function isLocalSubnet(ipv4: string): boolean {
+    const target = ipv4ToBytes(ipv4);
+    if (!target) return false;
+    for (const list of Object.values(os.networkInterfaces())) {
+        if (!list) continue;
+        for (const iface of list) {
+            if (iface.family !== "IPv4" || iface.internal) continue;
+            const addr = ipv4ToBytes(iface.address);
+            const mask = ipv4ToBytes(iface.netmask);
+            if (!addr || !mask) continue;
+            let match = true;
+            for (let i = 0; i < 4; i++) {
+                if ((target[i] & mask[i]) !== (addr[i] & mask[i])) { match = false; break; }
+            }
+            if (match) return true;
+        }
+    }
+    return false;
 }
 
 let win32State: { SendARP: any } | null = null;
@@ -43,8 +70,9 @@ async function lookupMacWin32(ipv4: string): Promise<string> {
             ]);
             win32State = { SendARP };
         }
-        const destIp = ipv4ToNbo(ipv4);
-        if (destIp === null) return "";
+        const bytes = ipv4ToBytes(ipv4);
+        if (!bytes) return "";
+        const destIp = ((bytes[0]) | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)) >>> 0;
         const macBuf = Buffer.alloc(8);
         const lenBuf = Buffer.alloc(4);
         lenBuf.writeUInt32LE(6, 0);
@@ -65,17 +93,17 @@ async function lookupMacWin32(ipv4: string): Promise<string> {
     }
 }
 
-/** "192.168.1.1" → uint32 in network byte order (low byte = first octet on little-endian). */
-function ipv4ToNbo(ip: string): number | null {
+/** "192.168.1.1" → [192,168,1,1], or null if not a well-formed dotted-quad. */
+function ipv4ToBytes(ip: string): number[] | null {
     const parts = ip.split(".");
     if (parts.length !== 4) return null;
-    const octets: number[] = [];
+    const bytes: number[] = [];
     for (const p of parts) {
         const n = parseInt(p, 10);
         if (!Number.isInteger(n) || n < 0 || n > 255 || String(n) !== p) return null;
-        octets.push(n);
+        bytes.push(n);
     }
-    return ((octets[0]) | (octets[1] << 8) | (octets[2] << 16) | (octets[3] << 24)) >>> 0;
+    return bytes;
 }
 
 async function lookupMacLinux(ipv4: string): Promise<string> {

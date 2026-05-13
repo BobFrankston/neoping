@@ -34,7 +34,7 @@ const results = await ping(["8.8.8.8", "1.1.1.1", "google.com"]);
 
 // All options (all optional)
 const result = await ping("8.8.8.8", {
-    count: 4,       // pings per host (default 4)
+    count: 1,       // pings per host (default 1)
     timeout: 4000,  // per-ping timeout in ms (default 4000)
     interval: 1000, // interval between pings in ms (default 1000)
     ttl: 128,       // time-to-live (default 128)
@@ -42,7 +42,7 @@ const result = await ping("8.8.8.8", {
     sudo: false,    // auto-escalate on Linux if DGRAM fails (default false)
     family: 4,      // 4 or 6 (default 4)
     rdns: true,     // reverse-DNS lookup when target is an IP (default true)
-    arp: false,     // look up MAC via ARP after pinging (default false)
+    arp: true,      // look up MAC via ARP for local-subnet IPs (default true)
 });
 
 // Direct MAC lookup is also exposed
@@ -79,16 +79,19 @@ const diag = await getDiagnostics();
 
 ### ARP / MAC lookup
 
-With `arp: true` (or `-arp` on the CLI), neoping resolves the target's MAC
-after pinging. Lookup is platform-native — no subprocess except on macOS:
+ARP lookup is on by default. neoping checks whether the target IP is on
+one of your interfaces' subnets and, if so, resolves its MAC after pinging:
 
 - **Windows**: `SendARP` (Iphlpapi.dll) via Koffi — same DLL used for ICMP.
 - **Linux**: parses `/proc/net/arp` directly.
 - **macOS**: shells out to `arp -n <ip>`.
 
-ARP is a link-layer protocol, so this only resolves IPs on the local subnet.
-For a remote IP you'll typically get the gateway's MAC (Linux/macOS) or
-nothing (Windows `SendARP` rejects non-local destinations).
+Non-local IPs are skipped — no MAC is returned for them. This avoids the
+misleading case where ARP would otherwise return the default gateway's MAC
+(on Linux/macOS) for a remote host like `8.8.8.8`.
+
+Disable with `arp: false` or the `-noarp` flag. `lookupMac(ip)` is also
+exported directly for callers who want just the MAC without pinging.
 
 ## CLI
 
@@ -96,7 +99,7 @@ nothing (Windows `SendARP` rejects non-local destinations).
 neoping <host> [host2 ...] [options]
 
 Options:
-  -c <n>       Pings per host (default 4)
+  -c <n>       Pings per host (default 1)
   -t <ms>      Timeout in ms (default 4000)
   -i <ms>      Interval in ms (default 1000)
   -ttl <n>     TTL (default 128)
@@ -104,8 +107,8 @@ Options:
   -sudo        Escalate if unprivileged fails (Linux)
   -rdns        Reverse-DNS lookup for IP targets (default: on)
   -nordns      Disable reverse-DNS lookup
-  -arp         Look up MAC address via ARP (local subnet only)
-  -noarp       Disable ARP lookup (default)
+  -arp         Look up MAC via ARP for local-subnet IPs (default: on)
+  -noarp       Disable ARP lookup
   -json        JSON output
   -diag        Platform diagnostics
 ```

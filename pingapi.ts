@@ -23,7 +23,7 @@ export type { PingOptions, PingResult, PingReply };
 export { lookupMac };
 
 const DEFAULT_OPTIONS: Required<PingOptions> = {
-    count: 4,
+    count: 1,
     timeout: 4000,
     interval: 1000,
     ttl: 128,
@@ -31,7 +31,7 @@ const DEFAULT_OPTIONS: Required<PingOptions> = {
     sudo: false,
     family: 4,
     rdns: true,
-    arp: false,
+    arp: true,
     trace: false,
     diagnostics: false,
 };

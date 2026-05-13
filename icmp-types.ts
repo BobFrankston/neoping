@@ -57,7 +57,7 @@ export interface PingResult {
 
 /** Options for ping operations */
 export interface PingOptions {
-    count?: number;       /** Number of pings (default 4) */
+    count?: number;       /** Number of pings (default 1) */
     timeout?: number;     /** Per-ping timeout in ms (default 4000) */
     interval?: number;    /** Interval between pings in ms (default 1000) */
     ttl?: number;         /** Time-to-live (default 128) */
@@ -65,7 +65,7 @@ export interface PingOptions {
     sudo?: boolean;       /** Auto-escalate privileges if needed */
     family?: 4 | 6;       /** Force IPv4 or IPv6 */
     rdns?: boolean;       /** Reverse-DNS lookup when target is an IP (default true) */
-    arp?: boolean;        /** Look up MAC address via ARP after pinging (default false, local-subnet only) */
+    arp?: boolean;        /** Look up MAC address via ARP after pinging, local-subnet only (default true) */
     trace?: boolean;      /** Emit stderr trace for debugging (default false) */
     diagnostics?: boolean; /** Include platform diagnostics in results (default false) */
 }

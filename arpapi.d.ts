@@ -13,6 +13,11 @@
  * IPs you'll typically get the gateway's MAC (Linux/macOS) or "" (Windows).
  */
 /** Look up the MAC for an IPv4 address. Returns lowercase colon form
- *  ("aa:bb:cc:dd:ee:ff") or "" if no entry is available. */
+ *  ("aa:bb:cc:dd:ee:ff") or "" if no entry is available.
+ *
+ *  Only resolves addresses on a directly-connected subnet — for any other
+ *  IP this returns "" without doing a lookup. This prevents the misleading
+ *  case on Linux/macOS where ARP returns the default gateway's MAC for
+ *  remote IPs (Windows SendARP already enforces this server-side). */
 export declare function lookupMac(ipv4: string): Promise<string>;
 //# sourceMappingURL=arpapi.d.ts.map

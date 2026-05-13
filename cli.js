@@ -13,7 +13,7 @@ function usage() {
     console.log("Usage: neoping <host> [host2 ...] [options]");
     console.log("");
     console.log("Options:");
-    console.log("  -c <n>       Pings per host (default 4)");
+    console.log("  -c <n>       Pings per host (default 1)");
     console.log("  -t <ms>      Timeout in ms (default 4000)");
     console.log("  -i <ms>      Interval in ms (default 1000)");
     console.log("  -ttl <n>     TTL (default 128)");
@@ -23,8 +23,8 @@ function usage() {
     console.log("  -sudo        Escalate if unprivileged fails");
     console.log("  -rdns        Reverse-DNS lookup for IP targets (default: on)");
     console.log("  -nordns      Disable reverse-DNS lookup");
-    console.log("  -arp         Look up MAC address via ARP (local subnet only)");
-    console.log("  -noarp       Disable ARP lookup (default)");
+    console.log("  -arp         Look up MAC via ARP for local-subnet IPs (default: on)");
+    console.log("  -noarp       Disable ARP lookup");
     console.log("  -json        JSON output");
     console.log("  -trace       Debug trace to stderr");
     console.log("  -diag        Platform diagnostics");
