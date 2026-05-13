@@ -12,7 +12,9 @@
  *   const results = await ping(["8.8.8.8", "1.1.1.1", "google.com"]);
  */
 import type { PingOptions, PingResult, PingReply } from "./icmp-types.js";
+import { lookupMac } from "./arpapi.js";
 export type { PingOptions, PingResult, PingReply };
+export { lookupMac };
 /**
  * Ping one or more targets. Array targets run in parallel.
  * Uses allSettled so one failure doesn't block others.

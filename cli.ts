@@ -27,6 +27,8 @@ function usage() {
     console.log("  -sudo        Escalate if unprivileged fails");
     console.log("  -rdns        Reverse-DNS lookup for IP targets (default: on)");
     console.log("  -nordns      Disable reverse-DNS lookup");
+    console.log("  -arp         Look up MAC address via ARP (local subnet only)");
+    console.log("  -noarp       Disable ARP lookup (default)");
     console.log("  -json        JSON output");
     console.log("  -trace       Debug trace to stderr");
     console.log("  -diag        Platform diagnostics");
@@ -45,6 +47,7 @@ function printTable(results: PingResult[]) {
         return {
             host,
             address: r.address || "unresolved",
+            mac: r.mac || "",
             min: s.minRtt >= 0 ? s.minRtt.toFixed(1) : "-",
             avg: s.avgRtt >= 0 ? s.avgRtt.toFixed(1) : "-",
             max: s.maxRtt >= 0 ? s.maxRtt.toFixed(1) : "-",
@@ -53,8 +56,8 @@ function printTable(results: PingResult[]) {
         };
     });
 
-    const headers: Record<string, string> = { host: "Host", address: "Address", min: "Min(ms)", avg: "Avg(ms)", max: "Max(ms)", loss: "Loss", sent: "Sent" };
-    const cols = ["host", "address", "min", "avg", "max", "loss", "sent"];
+    const headers: Record<string, string> = { host: "Host", address: "Address", mac: "MAC", min: "Min(ms)", avg: "Avg(ms)", max: "Max(ms)", loss: "Loss", sent: "Sent" };
+    const cols = ["host", "address", "mac", "min", "avg", "max", "loss", "sent"];
 
     // Measure widths
     const widths: Record<string, number> = {};
@@ -65,9 +68,12 @@ function printTable(results: PingResult[]) {
         }
     }
 
-    // Skip host column if no DNS names were used; skip sent column if count == 1
+    // Skip host column if no DNS names were used; skip sent column if count == 1;
+    // skip mac column if no row produced one (ARP disabled, or no entry found).
     const showHost = rows.some(r => r.host !== "");
+    const showMac = rows.some(r => r.mac !== "");
     let activeCols = showHost ? cols : cols.filter(c => c !== "host");
+    if (!showMac) activeCols = activeCols.filter(c => c !== "mac");
     if (!showCount) activeCols = activeCols.filter(c => c !== "sent");
 
     // RTT columns are right-aligned, others left
@@ -152,6 +158,12 @@ export async function main() {
                 break;
             case "-nordns":
                 opts.rdns = false;
+                break;
+            case "-arp":
+                opts.arp = true;
+                break;
+            case "-noarp":
+                opts.arp = false;
                 break;
             case "-trace":
                 opts.trace = true;

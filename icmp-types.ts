@@ -39,6 +39,7 @@ export interface PingResult {
     host: string;         /** Original target */
     address: string;      /** Resolved IP address */
     family: number;       /** Address family (4 or 6) */
+    mac: string;          /** MAC address from ARP cache ("" if not looked up or not on local subnet) */
     replies: PingReply[]; /** Individual ping replies */
     stats: {
         sent: number;
@@ -63,7 +64,8 @@ export interface PingOptions {
     size?: number;        /** Payload size in bytes (default 32) */
     sudo?: boolean;       /** Auto-escalate privileges if needed */
     family?: 4 | 6;       /** Force IPv4 or IPv6 */
-    rdns?: boolean;       /** Reverse-DNS lookup when target is an IP (default false) */
+    rdns?: boolean;       /** Reverse-DNS lookup when target is an IP (default true) */
+    arp?: boolean;        /** Look up MAC address via ARP after pinging (default false, local-subnet only) */
     trace?: boolean;      /** Emit stderr trace for debugging (default false) */
     diagnostics?: boolean; /** Include platform diagnostics in results (default false) */
 }

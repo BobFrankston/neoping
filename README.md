@@ -41,7 +41,13 @@ const result = await ping("8.8.8.8", {
     size: 32,       // payload bytes (default 32)
     sudo: false,    // auto-escalate on Linux if DGRAM fails (default false)
     family: 4,      // 4 or 6 (default 4)
+    rdns: true,     // reverse-DNS lookup when target is an IP (default true)
+    arp: false,     // look up MAC via ARP after pinging (default false)
 });
+
+// Direct MAC lookup is also exposed
+import { lookupMac } from "@bobfrankston/neoping";
+const mac = await lookupMac("192.168.1.1"); // "aa:bb:cc:dd:ee:ff" or ""
 
 // Platform diagnostics
 const diag = await getDiagnostics();
@@ -54,6 +60,7 @@ const diag = await getDiagnostics();
     host: string;          // original target
     address: string;       // resolved IP (empty on error)
     family: number;        // 4 or 6
+    mac: string;           // MAC from ARP ("" unless arp:true and on local subnet)
     replies: PingReply[];  // individual pings
     stats: {
         sent: number;
@@ -70,6 +77,19 @@ const diag = await getDiagnostics();
 }
 ```
 
+### ARP / MAC lookup
+
+With `arp: true` (or `-arp` on the CLI), neoping resolves the target's MAC
+after pinging. Lookup is platform-native — no subprocess except on macOS:
+
+- **Windows**: `SendARP` (Iphlpapi.dll) via Koffi — same DLL used for ICMP.
+- **Linux**: parses `/proc/net/arp` directly.
+- **macOS**: shells out to `arp -n <ip>`.
+
+ARP is a link-layer protocol, so this only resolves IPs on the local subnet.
+For a remote IP you'll typically get the gateway's MAC (Linux/macOS) or
+nothing (Windows `SendARP` rejects non-local destinations).
+
 ## CLI
 
 ```
@@ -82,6 +102,10 @@ Options:
   -ttl <n>     TTL (default 128)
   -s <n>       Payload bytes (default 32)
   -sudo        Escalate if unprivileged fails (Linux)
+  -rdns        Reverse-DNS lookup for IP targets (default: on)
+  -nordns      Disable reverse-DNS lookup
+  -arp         Look up MAC address via ARP (local subnet only)
+  -noarp       Disable ARP lookup (default)
   -json        JSON output
   -diag        Platform diagnostics
 ```

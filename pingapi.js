@@ -15,6 +15,8 @@ import * as dns from "node:dns/promises";
 import * as net from "node:net";
 import * as os from "node:os";
 import { styleText } from "node:util";
+import { lookupMac } from "./arpapi.js";
+export { lookupMac };
 const DEFAULT_OPTIONS = {
     count: 4,
     timeout: 4000,
@@ -24,6 +26,7 @@ const DEFAULT_OPTIONS = {
     sudo: false,
     family: 4,
     rdns: true,
+    arp: false,
     trace: false,
     diagnostics: false,
 };
@@ -140,6 +143,7 @@ async function pingOne(host, opts) {
             host,
             address: hostIsIp ? host : "",
             family: hostIsIp ? net.isIP(host) : opts.family,
+            mac: "",
             replies: [],
             stats: computeStats([]),
             platform: os.platform(),
@@ -154,6 +158,7 @@ async function pingOne(host, opts) {
             host,
             address: resolved.address,
             family: 6,
+            mac: "",
             replies: [],
             stats: computeStats([]),
             platform: os.platform(),
@@ -195,10 +200,19 @@ async function pingOne(host, opts) {
             await delay(opts.interval);
         }
     }
+    // ARP lookup runs after pinging so the cache is hot (especially on
+    // Windows, where SendARP only succeeds for directly connected subnets).
+    let mac = "";
+    if (opts.arp) {
+        trace(t, `  → lookupMac(${resolved.address})`);
+        mac = await lookupMac(resolved.address);
+        trace(t, `  → mac="${mac}"`);
+    }
     return {
         host: displayHost,
         address: resolved.address,
         family: resolved.family,
+        mac,
         replies,
         stats: computeStats(replies),
         platform: os.platform(),
@@ -223,6 +237,7 @@ export async function ping(target, options) {
             host: hosts[i],
             address: "",
             family: opts.family,
+            mac: "",
             replies: [],
             stats: computeStats([]),
             platform: os.platform(),

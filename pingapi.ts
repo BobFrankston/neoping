@@ -17,8 +17,10 @@ import * as net from "node:net";
 import * as os from "node:os";
 import { styleText } from "node:util";
 import type { PingOptions, PingResult, PingReply, IcmpBackend } from "./icmp-types.js";
+import { lookupMac } from "./arpapi.js";
 
 export type { PingOptions, PingResult, PingReply };
+export { lookupMac };
 
 const DEFAULT_OPTIONS: Required<PingOptions> = {
     count: 4,
@@ -29,6 +31,7 @@ const DEFAULT_OPTIONS: Required<PingOptions> = {
     sudo: false,
     family: 4,
     rdns: true,
+    arp: false,
     trace: false,
     diagnostics: false,
 };
@@ -156,6 +159,7 @@ async function pingOne(host: string, opts: Required<PingOptions>): Promise<PingR
             host,
             address: hostIsIp ? host : "",
             family: hostIsIp ? net.isIP(host) as 4 | 6 : opts.family,
+            mac: "",
             replies: [],
             stats: computeStats([]),
             platform: os.platform(),
@@ -172,6 +176,7 @@ async function pingOne(host: string, opts: Required<PingOptions>): Promise<PingR
             host,
             address: resolved.address,
             family: 6,
+            mac: "",
             replies: [],
             stats: computeStats([]),
             platform: os.platform(),
@@ -216,10 +221,20 @@ async function pingOne(host: string, opts: Required<PingOptions>): Promise<PingR
         }
     }
 
+    // ARP lookup runs after pinging so the cache is hot (especially on
+    // Windows, where SendARP only succeeds for directly connected subnets).
+    let mac = "";
+    if (opts.arp) {
+        trace(t, `  → lookupMac(${resolved.address})`);
+        mac = await lookupMac(resolved.address);
+        trace(t, `  → mac="${mac}"`);
+    }
+
     return {
         host: displayHost,
         address: resolved.address,
         family: resolved.family,
+        mac,
         replies,
         stats: computeStats(replies),
         platform: os.platform(),
@@ -246,6 +261,7 @@ export async function ping(target: string | string[], options?: PingOptions): Pr
             host: hosts[i],
             address: "",
             family: opts.family,
+            mac: "",
             replies: [],
             stats: computeStats([]),
             platform: os.platform(),
